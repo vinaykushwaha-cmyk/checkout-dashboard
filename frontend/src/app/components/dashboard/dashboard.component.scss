@@ -1,0 +1,121 @@
+.toolbar {
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+
+  .toolbar-title {
+    font-size: 20px;
+    font-weight: 500;
+  }
+
+  .spacer {
+    flex: 1 1 auto;
+  }
+
+  .user-info {
+    margin-right: 16px;
+    font-size: 14px;
+  }
+
+  .logout-btn {
+    margin-left: 8px;
+  }
+}
+
+.dashboard-container {
+  min-height: calc(100vh - 64px);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 40px 20px;
+
+  .welcome-section {
+    max-width: 800px;
+    margin: 0 auto 30px;
+
+    .welcome-card {
+      mat-card-header {
+        mat-card-title {
+          font-size: 28px;
+          color: #667eea;
+          margin-bottom: 8px;
+        }
+
+        mat-card-subtitle {
+          font-size: 16px;
+          color: #666;
+        }
+      }
+
+      mat-card-content {
+        padding-top: 20px;
+
+        .user-details {
+          p {
+            font-size: 16px;
+            margin: 12px 0;
+            color: #333;
+
+            strong {
+              color: #667eea;
+              margin-right: 8px;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  .dashboard-content {
+    max-width: 800px;
+    margin: 0 auto;
+
+    .info-card {
+      mat-card-header {
+        .card-icon {
+          background-color: #667eea;
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+        }
+
+        mat-card-title {
+          font-size: 24px;
+          color: #333;
+        }
+
+        mat-card-subtitle {
+          color: #666;
+        }
+      }
+
+      mat-card-content {
+        padding-top: 20px;
+        font-size: 16px;
+        line-height: 1.6;
+        color: #555;
+      }
+    }
+  }
+}
+
+@media (max-width: 600px) {
+  .dashboard-container {
+    padding: 20px 10px;
+
+    .welcome-section .welcome-card mat-card-header mat-card-title {
+      font-size: 22px;
+    }
+
+    .dashboard-content .info-card mat-card-header mat-card-title {
+      font-size: 20px;
+    }
+  }
+
+  .toolbar .user-info {
+    display: none;
+  }
+}

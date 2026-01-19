@@ -1,0 +1,159 @@
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    width: 500px;
+    height: 500px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    top: -250px;
+    right: -250px;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    width: 400px;
+    height: 400px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    bottom: -200px;
+    left: -200px;
+  }
+}
+
+.login-card-wrapper {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 450px;
+}
+
+.login-card {
+  padding: 20px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.95);
+
+  mat-card-header {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+    padding: 0;
+  }
+
+  .header-content {
+    text-align: center;
+    width: 100%;
+
+    .logo {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 10px;
+
+      .logo-icon {
+        font-size: 48px;
+        width: 48px;
+        height: 48px;
+        color: #667eea;
+      }
+    }
+
+    mat-card-title {
+      font-size: 28px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 8px;
+    }
+
+    mat-card-subtitle {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 0;
+    }
+  }
+}
+
+.auth-form {
+  padding: 20px 0 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  .full-width {
+    width: 100%;
+  }
+
+  mat-form-field {
+    ::ng-deep .mat-mdc-text-field-wrapper {
+      background-color: #f8f9fa;
+    }
+
+    ::ng-deep .mat-mdc-form-field-focus-overlay {
+      background-color: transparent;
+    }
+  }
+
+  .submit-button {
+    height: 48px;
+    font-size: 16px;
+    font-weight: 500;
+    margin-top: 10px;
+    border-radius: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    position: relative;
+
+    .button-spinner {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+
+      ::ng-deep circle {
+        stroke: white;
+      }
+    }
+  }
+}
+
+.footer-text {
+  margin-top: 20px;
+  text-align: center;
+
+  p {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 12px;
+    margin: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .login-card {
+    padding: 15px;
+
+    .header-content {
+      mat-card-title {
+        font-size: 24px;
+      }
+
+      mat-card-subtitle {
+        font-size: 12px;
+      }
+    }
+  }
+
+  .auth-form {
+    padding: 20px 0 10px;
+  }
+}
