@@ -1,1 +1,103 @@
-<p>dashboard works!</p>
+<div class="dashboard-layout">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h2>Admin</h2>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-item active">
+        <mat-icon>dashboard</mat-icon>
+        <span>Dashboard</span>
+      </a>
+      <a class="nav-item">
+        <mat-icon>payment</mat-icon>
+        <span>Payments</span>
+      </a>
+      <a class="nav-item" (click)="goToSubscriptions()">
+        <mat-icon>subscriptions</mat-icon>
+        <span>Subscriptions</span>
+      </a>
+      <a class="nav-item">
+        <mat-icon>people</mat-icon>
+        <span>Users</span>
+      </a>
+      <a class="nav-item logout" (click)="onLogout()">
+        <mat-icon>logout</mat-icon>
+        <span>Logout</span>
+      </a>
+    </nav>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <div class="content-header">
+      <h1>Payment Management Dashboard</h1>
+      <div class="user-profile">
+        <span class="user-name">{{ user?.name }}</span>
+        <div class="user-avatar">{{ getUserInitials() }}</div>
+      </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+      <mat-card class="stat-card stat-card-blue">
+        <mat-card-content>
+          <div class="stat-label">Trial Users</div>
+          <div class="stat-value">{{ stats.trialUsers }}</div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="stat-card stat-card-green">
+        <mat-card-content>
+          <div class="stat-label">Active Subscriptions</div>
+          <div class="stat-value">{{ stats.activeSubscriptions }}</div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="stat-card stat-card-orange">
+        <mat-card-content>
+          <div class="stat-label">Renewal Due</div>
+          <div class="stat-value">{{ stats.renewalDue }}</div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="stat-card stat-card-red">
+        <mat-card-content>
+          <div class="stat-label">Expired</div>
+          <div class="stat-value">{{ stats.expired }}</div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Recent Payments Table -->
+    <div class="table-section">
+      <h2 class="section-title">Recent Payments</h2>
+      <mat-card class="table-card">
+        <table class="payments-table">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Plan</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th>Expiry</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let payment of recentPayments">
+              <td>{{ payment.user }}</td>
+              <td>{{ payment.plan }}</td>
+              <td>₹{{ payment.amount }}</td>
+              <td>
+                <span class="status-badge" [ngClass]="'status-' + payment.status.toLowerCase()">
+                  {{ payment.status }}
+                </span>
+              </td>
+              <td>{{ payment.expiry }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </mat-card>
+    </div>
+  </div>
+</div>
