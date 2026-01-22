@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -12,6 +12,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatSelectModule } from '@angular/material/select';
+import { MatDialog, MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { SubscriptionService, Subscription, Plan, Product } from '../../services/subscription.service';
 import { AuthService } from '../../services/auth.service';
 
@@ -30,7 +31,8 @@ import { AuthService } from '../../services/auth.service';
     MatInputModule,
     MatDatepickerModule,
     MatNativeDateModule,
-    MatSelectModule
+    MatSelectModule,
+    MatDialogModule
   ],
   templateUrl: './subscriptions.component.html',
   styleUrl: './subscriptions.component.scss'
@@ -58,7 +60,8 @@ export class SubscriptionsComponent implements OnInit {
   constructor(
     private subscriptionService: SubscriptionService,
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private dialog: MatDialog
   ) {}
 
   ngOnInit(): void {
@@ -207,6 +210,46 @@ export class SubscriptionsComponent implements OnInit {
     }
   }
 
+  canCancelSubscription(paymentMethod: string | null | undefined): boolean {
+    if (!paymentMethod) return false;
+    const cancellablePaymentMethods = ['paypal', 'ebanx', 'stripe', 'ccavenue', 'razorpay'];
+    return cancellablePaymentMethods.includes(paymentMethod.toLowerCase());
+  }
+
+  cancelSubscription(subscription: Subscription): void {
+    const dialogRef = this.dialog.open(CancelSubscriptionDialogComponent, {
+      width: '500px',
+      data: { subscription }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        // Call backend API to cancel subscription
+        const cancelData = {
+          subscriptionId: subscription.id,
+          productId: subscription.product_id,
+          userId: subscription.user_id,
+          productName: subscription.product_name,
+          comment: result.comment || '',
+          cancelledType: subscription.payment_method || 'manual'
+        };
+
+        this.subscriptionService.cancelSubscription(cancelData).subscribe({
+          next: (response) => {
+            console.log('Subscription cancelled successfully:', response.message);
+            alert(response.message || 'Subscription cancelled successfully');
+            // Reload subscriptions after cancellation
+            this.loadSubscriptions();
+          },
+          error: (error) => {
+            console.error('Error cancelling subscription:', error);
+            alert('Error cancelling subscription: ' + (error.error?.message || error.message));
+          }
+        });
+      }
+    });
+  }
+
   goToDashboard(): void {
     this.router.navigate(['/dashboard']);
   }
@@ -218,5 +261,133 @@ export class SubscriptionsComponent implements OnInit {
   onLogout(): void {
     this.authService.logout();
     this.router.navigate(['/login']);
+  }
+}
+
+// Cancel Subscription Dialog Component
+@Component({
+  selector: 'app-cancel-subscription-dialog',
+  standalone: true,
+  imports: [
+    CommonModule,
+    FormsModule,
+    MatDialogModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatInputModule
+  ],
+  template: `
+    <div class="dialog-container">
+      <h2 mat-dialog-title>Cancel Subscription</h2>
+
+      <mat-dialog-content>
+        <div class="confirmation-message">
+          <p class="warning-text">Are you sure you want to cancel?</p>
+          <div class="subscription-details">
+            <p><strong>Product:</strong> {{ data.subscription.product_name }}</p>
+            <p><strong>Plan:</strong> {{ data.subscription.plan_name }}</p>
+          </div>
+        </div>
+
+        <mat-form-field appearance="outline" class="comment-field">
+          <mat-label>Comment</mat-label>
+          <textarea
+            matInput
+            [(ngModel)]="comment"
+            placeholder="Enter your reason for cancellation (optional)"
+            rows="4"
+            maxlength="500">
+          </textarea>
+          <mat-hint align="end">{{ comment.length }}/500</mat-hint>
+        </mat-form-field>
+      </mat-dialog-content>
+
+      <mat-dialog-actions align="end">
+        <button mat-raised-button (click)="onCancel()">No, Keep It</button>
+        <button mat-raised-button color="warn" (click)="onSubmit()">Yes, Cancel</button>
+      </mat-dialog-actions>
+    </div>
+  `,
+  styles: [`
+    .dialog-container {
+      padding: 10px;
+    }
+
+    h2 {
+      color: #2c3e50;
+      margin: 0 0 20px 0;
+      font-size: 24px;
+      font-weight: 600;
+    }
+
+    mat-dialog-content {
+      padding: 20px 0;
+      min-height: 200px;
+    }
+
+    .confirmation-message {
+      margin-bottom: 24px;
+    }
+
+    .warning-text {
+      font-size: 18px;
+      font-weight: 600;
+      color: #dc3545;
+      margin: 0 0 16px 0;
+    }
+
+    .subscription-details {
+      background-color: #f8f9fa;
+      padding: 16px;
+      border-radius: 8px;
+      border-left: 4px solid #667eea;
+    }
+
+    .subscription-details p {
+      margin: 8px 0;
+      font-size: 14px;
+      color: #2c3e50;
+    }
+
+    .subscription-details strong {
+      font-weight: 600;
+      color: #34495e;
+    }
+
+    .comment-field {
+      width: 100%;
+      font-size: 14px;
+    }
+
+    .comment-field textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    mat-dialog-actions {
+      padding: 16px 0 0 0;
+      gap: 12px;
+    }
+
+    mat-dialog-actions button {
+      min-width: 120px;
+      font-weight: 500;
+    }
+  `]
+})
+export class CancelSubscriptionDialogComponent {
+  comment: string = '';
+
+  constructor(
+    public dialogRef: MatDialogRef<CancelSubscriptionDialogComponent>,
+    @Inject(MAT_DIALOG_DATA) public data: { subscription: Subscription }
+  ) {}
+
+  onCancel(): void {
+    this.dialogRef.close();
+  }
+
+  onSubmit(): void {
+    this.dialogRef.close({ comment: this.comment });
   }
 }

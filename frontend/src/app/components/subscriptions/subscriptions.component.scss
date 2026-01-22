@@ -303,6 +303,21 @@
             font-weight: 600;
             color: #28a745;
           }
+
+          &.action-cell {
+            text-align: center;
+
+            .cancel-btn {
+              font-size: 12px;
+              padding: 6px 16px;
+              min-width: 80px;
+            }
+
+            .no-action {
+              color: #9ca3af;
+              font-size: 14px;
+            }
+          }
         }
       }
     }

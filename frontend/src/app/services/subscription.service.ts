@@ -6,6 +6,7 @@ export interface Subscription {
   id: number;
   product_name: string;
   product_id: string;
+  user_id: string;
   subscription_period: string;
   subscription_id: string;
   subscription_start_date: string;
@@ -15,6 +16,7 @@ export interface Subscription {
   plan_id: number;
   plan_name: string;
   status: string;
+  payment_method: string;
 }
 
 export interface SubscriptionResponse {
@@ -85,5 +87,16 @@ export class SubscriptionService {
 
   getProducts(): Observable<ProductResponse> {
     return this.http.get<ProductResponse>(`${this.apiUrl}/products/list`);
+  }
+
+  cancelSubscription(data: {
+    subscriptionId: number;
+    productId: string;
+    userId: string;
+    productName: string;
+    comment: string;
+    cancelledType: string;
+  }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/cancel`, data);
   }
 }

@@ -128,6 +128,7 @@
               <th>Renewal Date</th>
               <th>Price</th>
               <th>Status</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody>
@@ -146,6 +147,17 @@
                 <span class="status-badge" [ngClass]="getStatusClass(subscription.status)">
                   {{ subscription.status }}
                 </span>
+              </td>
+              <td class="action-cell">
+                <button
+                  *ngIf="canCancelSubscription(subscription.payment_method)"
+                  mat-raised-button
+                  color="warn"
+                  class="cancel-btn"
+                  (click)="cancelSubscription(subscription)">
+                  Cancel
+                </button>
+                <span *ngIf="!canCancelSubscription(subscription.payment_method)" class="no-action">-</span>
               </td>
             </tr>
           </tbody>

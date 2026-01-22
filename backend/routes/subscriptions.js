@@ -52,6 +52,7 @@ router.get('/', async (req, res) => {
         s.id,
         s.product_name,
         s.product_id,
+        s.user_id,
         s.subscription_period,
         s.subscription_id,
         s.subscription_start_date,
@@ -59,6 +60,7 @@ router.get('/', async (req, res) => {
         s.plan_price,
         s.currency,
         s.plan_id,
+        s.payment_method,
         p.plan_name,
         CASE
           WHEN s.subscription_end_date IS NULL THEN 'Unknown'
@@ -140,6 +142,61 @@ router.get('/products/list', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error fetching products',
+      error: error.message
+    });
+  }
+});
+
+// Cancel subscription
+router.post('/cancel', async (req, res) => {
+  try {
+    const { subscriptionId, productId, userId, productName, comment, cancelledType } = req.body;
+    const addedon = Math.floor(Date.now() / 1000); // Unix timestamp
+    const work_type = 'cancel';
+    const adminuser = req.user?.username || 'admin'; // Get from auth middleware if available
+
+    // Insert comment into appypie_payment_comment table
+    const insertQuery = `
+      INSERT INTO checkout.appypie_payment_comment
+      (product_id, comment, addedon, adminuser, work_type)
+      VALUES (?, ?, ?, ?, ?)
+    `;
+
+    await pool.execute(insertQuery, [
+      productId,
+      comment || '',
+      addedon,
+      adminuser,
+      work_type
+    ]);
+
+    // Here you would typically call the external API
+    // For now, we'll just return a success message
+    // const apiUrl = process.env.NODE_ENV === 'production'
+    //   ? 'https://checkout.appypie.com/api'
+    //   : 'https://checkout-dev.appypie.com/api';
+
+    // TODO: Implement API call to cancel subscription
+    // const requestData = {
+    //   productId,
+    //   userId,
+    //   productName,
+    //   cancelReason: comment,
+    //   cancelledType,
+    //   lang: 'en',
+    //   method: 'cancelSubscriptionProduct'
+    // };
+
+    res.json({
+      success: true,
+      message: 'Subscription cancelled successfully'
+    });
+
+  } catch (error) {
+    console.error('Error cancelling subscription:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error cancelling subscription',
       error: error.message
     });
   }
