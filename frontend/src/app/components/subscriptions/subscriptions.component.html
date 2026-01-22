@@ -1,0 +1,185 @@
+<div class="dashboard-layout">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h2>Admin</h2>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-item" (click)="goToDashboard()">
+        <mat-icon>dashboard</mat-icon>
+        <span>Dashboard</span>
+      </a>
+      <a class="nav-item">
+        <mat-icon>payment</mat-icon>
+        <span>Payments</span>
+      </a>
+      <a class="nav-item active" (click)="goToSubscriptions()">
+        <mat-icon>subscriptions</mat-icon>
+        <span>Subscriptions</span>
+      </a>
+      <a class="nav-item">
+        <mat-icon>people</mat-icon>
+        <span>Users</span>
+      </a>
+      <a class="nav-item logout" (click)="onLogout()">
+        <mat-icon>logout</mat-icon>
+        <span>Logout</span>
+      </a>
+    </nav>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <div class="content-header">
+      <h1>Subscriptions Management</h1>
+      <div class="user-profile">
+        <span class="user-name">{{ user?.name }}</span>
+        <div class="user-avatar">{{ getUserInitials() }}</div>
+      </div>
+    </div>
+
+    <!-- Subscriptions Table -->
+    <div class="table-section">
+      <mat-card class="table-card">
+        <div class="table-header">
+          <h2 class="section-title">Subscriptions List</h2>
+          <div class="table-info" *ngIf="!loading">
+            Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to {{ currentPage * itemsPerPage > totalItems ? totalItems : currentPage * itemsPerPage }} of {{ totalItems }} subscriptions
+          </div>
+        </div>
+
+        <!-- Filters Section -->
+        <div class="filters-section" *ngIf="!loading">
+          <div class="filters-grid">
+            <mat-form-field appearance="outline" class="filter-field">
+              <mat-label>Product ID</mat-label>
+              <input matInput [(ngModel)]="filters.productId" placeholder="Search product ID" (keyup.enter)="applyFilters()">
+              <mat-icon matSuffix>search</mat-icon>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="filter-field">
+              <mat-label>Product Name</mat-label>
+              <mat-select [(ngModel)]="filters.productName" placeholder="Select product" (selectionChange)="onProductChange()">
+                <mat-option value="">All Products</mat-option>
+                <mat-option *ngFor="let product of products" [value]="product.name">
+                  {{ product.name }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="filter-field">
+              <mat-label>Plan Name</mat-label>
+              <mat-select [(ngModel)]="filters.planName" placeholder="Select plan">
+                <mat-option value="">All Plans</mat-option>
+                <mat-option *ngFor="let plan of plans" [value]="plan.plan_name">
+                  {{ plan.plan_name }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="filter-field">
+              <mat-label>Period</mat-label>
+              <input matInput [(ngModel)]="filters.period" placeholder="Search period" (keyup.enter)="applyFilters()">
+              <mat-icon matSuffix>search</mat-icon>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="filter-field">
+              <mat-label>Start Date</mat-label>
+              <input matInput [matDatepicker]="startDatePicker" [(ngModel)]="filters.startDate" placeholder="YYYY-MM-DD" (click)="startDatePicker.open()" readonly>
+              <mat-datepicker-toggle matIconSuffix [for]="startDatePicker"></mat-datepicker-toggle>
+              <mat-datepicker #startDatePicker></mat-datepicker>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="filter-field">
+              <mat-label>Renewal Date</mat-label>
+              <input matInput [matDatepicker]="renewalDatePicker" [(ngModel)]="filters.renewalDate" placeholder="YYYY-MM-DD" (click)="renewalDatePicker.open()" readonly>
+              <mat-datepicker-toggle matIconSuffix [for]="renewalDatePicker"></mat-datepicker-toggle>
+              <mat-datepicker #renewalDatePicker></mat-datepicker>
+            </mat-form-field>
+          </div>
+
+          <div class="filter-actions">
+            <button mat-raised-button color="primary" (click)="applyFilters()">
+              <mat-icon>search</mat-icon>
+              Search
+            </button>
+            <button mat-raised-button color="warn" (click)="clearFilters()" *ngIf="hasActiveFilters()">
+              <mat-icon>clear</mat-icon>
+              Clear Filters
+            </button>
+          </div>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div *ngIf="loading" class="loading-container">
+          <mat-spinner diameter="50"></mat-spinner>
+        </div>
+
+        <!-- Table -->
+        <table *ngIf="!loading" class="subscriptions-table">
+          <thead>
+            <tr>
+              <th>S.No</th>
+              <th>Product Name</th>
+              <th>Product ID</th>
+              <th>Plan Name</th>
+              <th>Period</th>
+              <th>Start Date</th>
+              <th>Renewal Date</th>
+              <th>Price</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let subscription of subscriptions; let i = index">
+              <td>{{ getSerialNumber(i) }}</td>
+              <td class="product-name">{{ subscription.product_name }}</td>
+              <td>{{ subscription.product_id }}</td>
+              <td class="plan-name">{{ subscription.plan_name || 'N/A' }}</td>
+              <td>
+                <span class="period-badge">{{ subscription.subscription_period || 'N/A' }}</span>
+              </td>
+              <td class="start-date">{{ subscription.subscription_start_date || 'N/A' }}</td>
+              <td class="renewal-date">{{ subscription.subscription_end_date || 'N/A' }}</td>
+              <td class="price">{{ subscription.currency || '' }} {{ subscription.plan_price || 'N/A' }}</td>
+              <td>
+                <span class="status-badge" [ngClass]="getStatusClass(subscription.status)">
+                  {{ subscription.status }}
+                </span>
+              </td>
+              <td class="action-cell">
+                <button
+                  *ngIf="canCancelSubscription(subscription.payment_method)"
+                  mat-raised-button
+                  color="warn"
+                  class="cancel-btn"
+                  (click)="cancelSubscription(subscription)">
+                  Cancel
+                </button>
+                <span *ngIf="!canCancelSubscription(subscription.payment_method)" class="no-action">-</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Empty State -->
+        <div *ngIf="!loading && subscriptions.length === 0" class="empty-state">
+          <mat-icon>inbox</mat-icon>
+          <p>No subscriptions found</p>
+        </div>
+
+        <!-- Pagination -->
+        <mat-paginator
+          *ngIf="!loading && subscriptions.length > 0"
+          [length]="totalItems"
+          [pageSize]="itemsPerPage"
+          [pageIndex]="currentPage - 1"
+          [pageSizeOptions]="[5, 10, 25, 50]"
+          (page)="onPageChange($event)"
+          showFirstLastButtons>
+        </mat-paginator>
+      </mat-card>
+    </div>
+  </div>
+</div>
