@@ -99,4 +99,23 @@ export class SubscriptionService {
   }): Observable<any> {
     return this.http.post(`${this.apiUrl}/cancel`, data);
   }
+
+  renewalCharge(data: {
+    subscriptionId: number;
+    productId: string;
+    userId: string;
+    productName: string;
+    comment: string;
+  }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/renewal-charge`, data);
+  }
+
+  updateEndDate(data: {
+    subscriptionId: number;
+    productId: string;
+    newEndDate: string;
+    comment: string;
+  }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/update-end-date`, data);
+  }
 }

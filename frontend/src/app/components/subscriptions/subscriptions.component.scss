@@ -307,10 +307,19 @@
           &.action-cell {
             text-align: center;
 
-            .cancel-btn {
-              font-size: 12px;
-              padding: 6px 16px;
-              min-width: 80px;
+            .action-buttons {
+              display: flex;
+              gap: 8px;
+              justify-content: center;
+              align-items: center;
+              flex-wrap: wrap;
+            }
+
+            .cancel-btn, .renewal-btn, .update-date-btn {
+              font-size: 11px;
+              padding: 6px 12px;
+              min-width: 100px;
+              white-space: nowrap;
             }
 
             .no-action {
