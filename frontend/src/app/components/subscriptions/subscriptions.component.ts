@@ -210,10 +210,51 @@ export class SubscriptionsComponent implements OnInit {
     }
   }
 
+  // List of products that should not have Update Subs. End Date option
+  noUpdateProducts = [
+    'commonIpnListenerAction',
+    'googleworkspace',
+    'shutterstock',
+    'domain',
+    'apppromotion',
+    'academy',
+    'SMBSuite',
+    'livechatChatbot',
+    'SMBSuitePlus',
+    'taxi',
+    'moderator',
+    'appResubmit',
+    'emailmarketing'
+  ];
+
+  // Check if cancel button should be shown
   canCancelSubscription(paymentMethod: string | null | undefined): boolean {
     if (!paymentMethod) return false;
     const cancellablePaymentMethods = ['paypal', 'ebanx', 'stripe', 'ccavenue', 'razorpay'];
     return cancellablePaymentMethods.includes(paymentMethod.toLowerCase());
+  }
+
+  // Check if renewal charge button should be shown (only for PayPal and Stripe)
+  canShowRenewalCharge(paymentMethod: string | null | undefined): boolean {
+    if (!paymentMethod) return false;
+    const renewalPaymentMethods = ['paypal', 'stripe'];
+    return renewalPaymentMethods.includes(paymentMethod.toLowerCase());
+  }
+
+  // Check if update end date button should be shown
+  canShowUpdateEndDate(paymentMethod: string | null | undefined, productName: string | null | undefined): boolean {
+    if (!paymentMethod || !productName) return false;
+    const renewalPaymentMethods = ['paypal', 'stripe'];
+    const isPaymentMethodAllowed = renewalPaymentMethods.includes(paymentMethod.toLowerCase());
+    const isProductAllowed = !this.noUpdateProducts.includes(productName);
+    return isPaymentMethodAllowed && isProductAllowed;
+  }
+
+  // Check if any action buttons should be shown
+  hasAnyActions(paymentMethod: string | null | undefined): boolean {
+    if (!paymentMethod) return false;
+    const actionPaymentMethods = ['paypal', 'ebanx', 'stripe', 'ccavenue', 'razorpay'];
+    return actionPaymentMethods.includes(paymentMethod.toLowerCase());
   }
 
   cancelSubscription(subscription: Subscription): void {
@@ -244,6 +285,71 @@ export class SubscriptionsComponent implements OnInit {
           error: (error) => {
             console.error('Error cancelling subscription:', error);
             alert('Error cancelling subscription: ' + (error.error?.message || error.message));
+          }
+        });
+      }
+    });
+  }
+
+  renewalCharge(subscription: Subscription): void {
+    const dialogRef = this.dialog.open(RenewalChargeDialogComponent, {
+      width: '500px',
+      data: { subscription }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        // Call backend API to process renewal charge
+        const chargeData = {
+          subscriptionId: subscription.id,
+          productId: subscription.product_id,
+          userId: subscription.user_id,
+          productName: subscription.product_name,
+          comment: result.comment || ''
+        };
+
+        this.subscriptionService.renewalCharge(chargeData).subscribe({
+          next: (response) => {
+            console.log('Renewal charge processed successfully:', response.message);
+            alert(response.message || 'Renewal charge processed successfully');
+            // Reload subscriptions after renewal charge
+            this.loadSubscriptions();
+          },
+          error: (error) => {
+            console.error('Error processing renewal charge:', error);
+            alert('Error processing renewal charge: ' + (error.error?.message || error.message));
+          }
+        });
+      }
+    });
+  }
+
+  updateEndDate(subscription: Subscription): void {
+    const dialogRef = this.dialog.open(UpdateEndDateDialogComponent, {
+      width: '500px',
+      data: { subscription }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        // Call backend API to update end date
+        const updateData = {
+          subscriptionId: subscription.id,
+          productId: subscription.product_id,
+          newEndDate: result.newEndDate,
+          comment: result.comment || ''
+        };
+
+        this.subscriptionService.updateEndDate(updateData).subscribe({
+          next: (response) => {
+            console.log('Subscription end date updated successfully:', response.message);
+            alert(response.message || 'Subscription end date updated successfully');
+            // Reload subscriptions after update
+            this.loadSubscriptions();
+          },
+          error: (error) => {
+            console.error('Error updating subscription end date:', error);
+            alert('Error updating subscription end date: ' + (error.error?.message || error.message));
           }
         });
       }
@@ -389,5 +495,341 @@ export class CancelSubscriptionDialogComponent {
 
   onSubmit(): void {
     this.dialogRef.close({ comment: this.comment });
+  }
+}
+
+// Renewal Charge Dialog Component
+@Component({
+  selector: 'app-renewal-charge-dialog',
+  standalone: true,
+  imports: [
+    CommonModule,
+    FormsModule,
+    MatDialogModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatInputModule
+  ],
+  template: `
+    <div class="dialog-container">
+      <h2 mat-dialog-title>Renewal Charge</h2>
+
+      <mat-dialog-content>
+        <div class="confirmation-message">
+          <p class="warning-text">Are you sure you want to charge?</p>
+          <div class="subscription-details">
+            <p><strong>Product:</strong> {{ data.subscription.product_name }}</p>
+            <p><strong>Plan:</strong> {{ data.subscription.plan_name }}</p>
+            <p><strong>Price:</strong> {{ data.subscription.currency }} {{ data.subscription.plan_price }}</p>
+          </div>
+        </div>
+
+        <mat-form-field appearance="outline" class="comment-field">
+          <mat-label>Comment</mat-label>
+          <textarea
+            matInput
+            [(ngModel)]="comment"
+            placeholder="Enter your reason (optional)"
+            rows="4"
+            maxlength="500">
+          </textarea>
+          <mat-hint align="end">{{ comment.length }}/500</mat-hint>
+        </mat-form-field>
+      </mat-dialog-content>
+
+      <mat-dialog-actions align="end">
+        <button mat-raised-button class="no-btn" (click)="onCancel()">No, Keep It</button>
+        <button mat-raised-button color="primary" class="yes-btn" (click)="onSubmit()">Yes, Charge</button>
+      </mat-dialog-actions>
+    </div>
+  `,
+  styles: [`
+    .dialog-container {
+      padding: 10px;
+    }
+
+    h2 {
+      color: #2c3e50;
+      margin: 0 0 20px 0;
+      font-size: 24px;
+      font-weight: 600;
+    }
+
+    mat-dialog-content {
+      padding: 20px 0;
+      min-height: 200px;
+    }
+
+    .confirmation-message {
+      margin-bottom: 24px;
+    }
+
+    .warning-text {
+      font-size: 18px;
+      font-weight: 600;
+      color: #667eea;
+      margin: 0 0 16px 0;
+    }
+
+    .subscription-details {
+      background-color: #f8f9fa;
+      padding: 16px;
+      border-radius: 8px;
+      border-left: 4px solid #667eea;
+    }
+
+    .subscription-details p {
+      margin: 8px 0;
+      font-size: 14px;
+      color: #2c3e50;
+    }
+
+    .subscription-details strong {
+      font-weight: 600;
+      color: #34495e;
+    }
+
+    .comment-field {
+      width: 100%;
+      font-size: 14px;
+    }
+
+    .comment-field textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    mat-dialog-actions {
+      padding: 16px 0 0 0;
+      gap: 12px;
+    }
+
+    .no-btn, .yes-btn {
+      min-width: 120px;
+      font-weight: 500;
+    }
+
+    .no-btn {
+      background-color: #f5f5f5;
+      color: #2c3e50;
+    }
+
+    .no-btn:hover {
+      background-color: #e0e0e0;
+    }
+
+    .yes-btn {
+      background-color: #667eea;
+    }
+
+    .yes-btn:hover {
+      background-color: #5568d3;
+    }
+  `]
+})
+export class RenewalChargeDialogComponent {
+  comment: string = '';
+
+  constructor(
+    public dialogRef: MatDialogRef<RenewalChargeDialogComponent>,
+    @Inject(MAT_DIALOG_DATA) public data: { subscription: Subscription }
+  ) {}
+
+  onCancel(): void {
+    this.dialogRef.close();
+  }
+
+  onSubmit(): void {
+    this.dialogRef.close({ comment: this.comment });
+  }
+}
+
+// Update End Date Dialog Component
+@Component({
+  selector: 'app-update-end-date-dialog',
+  standalone: true,
+  imports: [
+    CommonModule,
+    FormsModule,
+    MatDialogModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatDatepickerModule,
+    MatNativeDateModule
+  ],
+  template: `
+    <div class="dialog-container">
+      <h2 mat-dialog-title>Update Subscription End Date</h2>
+
+      <mat-dialog-content>
+        <div class="confirmation-message">
+          <p class="warning-text">Are you sure you want to update the end date?</p>
+          <div class="subscription-details">
+            <p><strong>Product:</strong> {{ data.subscription.product_name }}</p>
+            <p><strong>Plan:</strong> {{ data.subscription.plan_name }}</p>
+            <p><strong>Current End Date:</strong> {{ data.subscription.subscription_end_date }}</p>
+          </div>
+        </div>
+
+        <mat-form-field appearance="outline" class="date-field">
+          <mat-label>New Subscription End Date</mat-label>
+          <input
+            matInput
+            [matDatepicker]="endDatePicker"
+            [(ngModel)]="newEndDate"
+            [min]="minDate"
+            placeholder="DD/MM/YYYY"
+            (click)="endDatePicker.open()"
+            readonly
+            required>
+          <mat-datepicker-toggle matIconSuffix [for]="endDatePicker"></mat-datepicker-toggle>
+          <mat-datepicker #endDatePicker></mat-datepicker>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="comment-field">
+          <mat-label>Comment</mat-label>
+          <textarea
+            matInput
+            [(ngModel)]="comment"
+            placeholder="Enter your reason for updating (optional)"
+            rows="4"
+            maxlength="500">
+          </textarea>
+          <mat-hint align="end">{{ comment.length }}/500</mat-hint>
+        </mat-form-field>
+      </mat-dialog-content>
+
+      <mat-dialog-actions align="end">
+        <button mat-raised-button class="no-btn" (click)="onCancel()">Cancel</button>
+        <button mat-raised-button color="primary" class="yes-btn" (click)="onSubmit()">Update</button>
+      </mat-dialog-actions>
+    </div>
+  `,
+  styles: [`
+    .dialog-container {
+      padding: 10px;
+    }
+
+    h2 {
+      color: #2c3e50;
+      margin: 0 0 20px 0;
+      font-size: 24px;
+      font-weight: 600;
+    }
+
+    mat-dialog-content {
+      padding: 20px 0;
+      min-height: 250px;
+    }
+
+    .confirmation-message {
+      margin-bottom: 24px;
+    }
+
+    .warning-text {
+      font-size: 18px;
+      font-weight: 600;
+      color: #667eea;
+      margin: 0 0 16px 0;
+    }
+
+    .subscription-details {
+      background-color: #f8f9fa;
+      padding: 16px;
+      border-radius: 8px;
+      border-left: 4px solid #667eea;
+    }
+
+    .subscription-details p {
+      margin: 8px 0;
+      font-size: 14px;
+      color: #2c3e50;
+    }
+
+    .subscription-details strong {
+      font-weight: 600;
+      color: #34495e;
+    }
+
+    .date-field, .comment-field {
+      width: 100%;
+      margin-bottom: 16px;
+      font-size: 14px;
+    }
+
+    .date-field ::ng-deep .mat-mdc-form-field-infix {
+      padding-top: 16px;
+      padding-bottom: 16px;
+    }
+
+    .comment-field textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    mat-dialog-actions {
+      padding: 16px 0 0 0;
+      gap: 12px;
+    }
+
+    .no-btn, .yes-btn {
+      min-width: 120px;
+      font-weight: 500;
+    }
+
+    .no-btn {
+      background-color: #f5f5f5;
+      color: #2c3e50;
+    }
+
+    .no-btn:hover {
+      background-color: #e0e0e0;
+    }
+
+    .yes-btn {
+      background-color: #667eea;
+    }
+
+    .yes-btn:hover {
+      background-color: #5568d3;
+    }
+  `]
+})
+export class UpdateEndDateDialogComponent {
+  newEndDate: Date | null = null;
+  minDate: Date | null = null;
+  comment: string = '';
+
+  constructor(
+    public dialogRef: MatDialogRef<UpdateEndDateDialogComponent>,
+    @Inject(MAT_DIALOG_DATA) public data: { subscription: Subscription }
+  ) {
+    // Set default date to current subscription end date
+    if (data.subscription.subscription_end_date) {
+      const currentEndDate = new Date(data.subscription.subscription_end_date);
+      this.newEndDate = currentEndDate;
+      // Set minimum date to current subscription end date (cannot select earlier dates)
+      this.minDate = currentEndDate;
+    }
+  }
+
+  onCancel(): void {
+    this.dialogRef.close();
+  }
+
+  onSubmit(): void {
+    if (!this.newEndDate) {
+      alert('Please select a new end date');
+      return;
+    }
+
+    // Format date to YYYY-MM-DD for backend
+    const year = this.newEndDate.getFullYear();
+    const month = String(this.newEndDate.getMonth() + 1).padStart(2, '0');
+    const day = String(this.newEndDate.getDate()).padStart(2, '0');
+    const formattedDate = `${year}-${month}-${day}`;
+
+    this.dialogRef.close({ newEndDate: formattedDate, comment: this.comment });
   }
 }

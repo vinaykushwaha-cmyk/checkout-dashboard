@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/database');
+const { encryptDecrypt } = require('../utils/encryption');
+const axios = require('axios');
 
 // Get subscriptions with pagination and filters
 router.get('/', async (req, res) => {
@@ -197,6 +199,137 @@ router.post('/cancel', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error cancelling subscription',
+      error: error.message
+    });
+  }
+});
+
+// Renewal charge subscription
+router.post('/renewal-charge', async (req, res) => {
+  try {
+    const { subscriptionId, productId, userId, productName, comment } = req.body;
+    const addedon = Math.floor(Date.now() / 1000); // Unix timestamp
+    const work_type = 'renewal';
+    const adminuser = req.user?.username || 'admin'; // Get from auth middleware if available
+
+    // Insert comment into appypie_payment_comment table
+    const insertQuery = `
+      INSERT INTO checkout.appypie_payment_comment
+      (product_id, comment, addedon, adminuser, work_type)
+      VALUES (?, ?, ?, ?, ?)
+    `;
+
+    const saveData = await pool.execute(insertQuery, [
+      productId,
+      comment || '',
+      addedon,
+      adminuser,
+      work_type
+    ]);
+
+    if (saveData) {
+      // API CALL - Similar to PHP implementation
+      const apiUrl = process.env.NODE_ENV === 'production'
+        ? 'https://checkout.appypie.com/api'
+        : 'https://checkout-dev.appypie.com/api';
+
+      // Prepare request data
+      const requestData = {
+        productId: productId,
+        method: 'productRtPaypal',
+        productName: productName
+      };
+
+      // Encrypt the request data
+      const hashParamsString = encryptDecrypt('encrypt', JSON.stringify(requestData));
+
+      try {
+        // Make API call
+        const response = await axios.post(apiUrl, [hashParamsString], {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        // Decrypt the response
+        const decryptedResult = encryptDecrypt('decrypt', response.data);
+        const dataResponse = JSON.parse(decryptedResult);
+
+        // Return the API response
+        res.json({
+          success: true,
+          status: dataResponse.status,
+          message: dataResponse.message || 'Renewal charge processed successfully',
+          data: dataResponse
+        });
+
+      } catch (apiError) {
+        console.error('API call error:', apiError);
+        res.status(500).json({
+          success: false,
+          message: 'Error calling renewal charge API',
+          error: apiError.message
+        });
+      }
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to save comment to database'
+      });
+    }
+
+  } catch (error) {
+    console.error('Error processing renewal charge:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error processing renewal charge',
+      error: error.message
+    });
+  }
+});
+
+// Update subscription end date
+router.post('/update-end-date', async (req, res) => {
+  try {
+    const { subscriptionId, productId, newEndDate, comment } = req.body;
+    const addedon = Math.floor(Date.now() / 1000); // Unix timestamp
+    const work_type = 'update_end_date';
+    const adminuser = req.user?.username || 'admin';
+
+    // Insert comment into appypie_payment_comment table
+    const insertQuery = `
+      INSERT INTO checkout.appypie_payment_comment
+      (product_id, comment, addedon, adminuser, work_type)
+      VALUES (?, ?, ?, ?, ?)
+    `;
+
+    await pool.execute(insertQuery, [
+      productId,
+      comment || '',
+      addedon,
+      adminuser,
+      work_type
+    ]);
+
+    // Update subscription end date
+    const updateQuery = `
+      UPDATE checkout.appypie_subscription
+      SET subscription_end_date = ?
+      WHERE id = ?
+    `;
+
+    await pool.execute(updateQuery, [newEndDate, subscriptionId]);
+
+    res.json({
+      success: true,
+      message: 'Subscription end date updated successfully'
+    });
+
+  } catch (error) {
+    console.error('Error updating subscription end date:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating subscription end date',
       error: error.message
     });
   }
