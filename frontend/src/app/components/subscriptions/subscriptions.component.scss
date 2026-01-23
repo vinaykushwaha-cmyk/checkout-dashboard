@@ -304,22 +304,50 @@
             color: #28a745;
           }
 
-          &.action-cell {
-            text-align: center;
+          &.payment-method {
+            font-weight: 500;
+            color: #6f42c1;
+            text-transform: capitalize;
+          }
 
-            .action-buttons {
+          &.action-cell {
+            text-align: left;
+            padding-left: 20px !important;
+
+            .action-links {
               display: flex;
-              gap: 8px;
-              justify-content: center;
-              align-items: center;
-              flex-wrap: wrap;
+              flex-direction: column;
+              gap: 4px;
             }
 
-            .cancel-btn, .renewal-btn, .update-date-btn {
-              font-size: 11px;
-              padding: 6px 12px;
-              min-width: 100px;
-              white-space: nowrap;
+            .action-link {
+              font-size: 13px;
+              color: #667eea;
+              text-decoration: none;
+              cursor: pointer;
+              transition: all 0.2s ease;
+              display: inline-block;
+
+              &:hover {
+                color: #5568d3;
+                text-decoration: underline;
+              }
+
+              &.cancel-link {
+                color: #dc3545;
+
+                &:hover {
+                  color: #c82333;
+                }
+              }
+
+              &.renewal-link {
+                color: #667eea;
+              }
+
+              &.update-link {
+                color: #e83e8c;
+              }
             }
 
             .no-action {

@@ -84,6 +84,18 @@
             </mat-form-field>
 
             <mat-form-field appearance="outline" class="filter-field">
+              <mat-label>Payment Method</mat-label>
+              <mat-select [(ngModel)]="filters.paymentMethod" placeholder="Select payment method">
+                <mat-option value="">All Payment Methods</mat-option>
+                <mat-option value="paypal">PayPal</mat-option>
+                <mat-option value="stripe">Stripe</mat-option>
+                <mat-option value="ebanx">Ebanx</mat-option>
+                <mat-option value="ccavenue">CCAvenue</mat-option>
+                <mat-option value="razorpay">Razorpay</mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="filter-field">
               <mat-label>Start Date</mat-label>
               <input matInput [matDatepicker]="startDatePicker" [(ngModel)]="filters.startDate" placeholder="YYYY-MM-DD" (click)="startDatePicker.open()" readonly>
               <mat-datepicker-toggle matIconSuffix [for]="startDatePicker"></mat-datepicker-toggle>
@@ -127,6 +139,7 @@
               <th>Start Date</th>
               <th>Renewal Date</th>
               <th>Price</th>
+              <th>Payment Method</th>
               <th>Status</th>
               <th>Action</th>
             </tr>
@@ -143,6 +156,7 @@
               <td class="start-date">{{ subscription.subscription_start_date || 'N/A' }}</td>
               <td class="renewal-date">{{ subscription.subscription_end_date || 'N/A' }}</td>
               <td class="price">{{ subscription.currency || '' }} {{ subscription.plan_price || 'N/A' }}</td>
+              <td class="payment-method">{{ subscription.payment_method || 'N/A' }}</td>
               <td>
                 <span class="status-badge" [ngClass]="getStatusClass(subscription.status)">
                   {{ subscription.status }}
