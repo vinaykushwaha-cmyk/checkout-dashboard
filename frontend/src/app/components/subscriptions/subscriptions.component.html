@@ -149,15 +149,30 @@
                 </span>
               </td>
               <td class="action-cell">
-                <button
-                  *ngIf="canCancelSubscription(subscription.payment_method)"
-                  mat-raised-button
-                  color="warn"
-                  class="cancel-btn"
-                  (click)="cancelSubscription(subscription)">
-                  Cancel
-                </button>
-                <span *ngIf="!canCancelSubscription(subscription.payment_method)" class="no-action">-</span>
+                <div class="action-links" *ngIf="hasAnyActions(subscription.payment_method)">
+                  <a
+                    *ngIf="canCancelSubscription(subscription.payment_method)"
+                    href="javascript:void(0)"
+                    class="action-link cancel-link"
+                    (click)="cancelSubscription(subscription)">
+                    Cancel
+                  </a>
+                  <a
+                    *ngIf="canShowRenewalCharge(subscription.payment_method)"
+                    href="javascript:void(0)"
+                    class="action-link renewal-link"
+                    (click)="renewalCharge(subscription)">
+                    Renewal Charge
+                  </a>
+                  <a
+                    *ngIf="canShowUpdateEndDate(subscription.payment_method, subscription.product_name)"
+                    href="javascript:void(0)"
+                    class="action-link update-link"
+                    (click)="updateEndDate(subscription)">
+                    Update Subs. End Date
+                  </a>
+                </div>
+                <span *ngIf="!hasAnyActions(subscription.payment_method)" class="no-action">-</span>
               </td>
             </tr>
           </tbody>
