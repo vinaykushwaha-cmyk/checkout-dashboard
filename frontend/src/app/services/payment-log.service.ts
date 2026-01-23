@@ -89,19 +89,42 @@ export interface Product {
 export interface Addon {
   id: number;
   name: string;
+  identifier?: string;
+  productName?: string;
+}
+
+export interface Plan {
+  id: number;
+  name: string;
+  identifier?: string;
+  productName?: string;
+}
+
+export interface Currency {
+  code: string;
+  sign: string;
+}
+
+export interface CountryOption {
+  value: string;
+  label: string;
+  currencyCode?: string;
+  currencySign?: string;
 }
 
 export interface AllFiltersResponse {
   success: boolean;
   data: {
     products: Product[];
+    plans: Plan[];
     addons: Addon[];
     subscriptionTypes: FilterOption[];
     paymentModes: FilterOption[];
     paymentSources: FilterOption[];
     subscriptionPeriods: FilterOption[];
-    languages: FilterOption[];
+    languages: CountryOption[];
     claimedUsers: FilterOption[];
+    currencies: Currency[];
   };
 }
 

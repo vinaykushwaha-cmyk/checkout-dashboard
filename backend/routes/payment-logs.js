@@ -2,90 +2,6 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/database');
 
-// Generate mock data for testing
-function generateMockData(count = 50) {
-  const appNames = ['Appy Pie App', 'Design Studio', 'Chatbot Builder', 'Website Builder', 'Form Builder'];
-  const subscriptionTypes = ['trial', 'upgrade', 'renewal'];
-  const paymentModes = ['stripe', 'paypal', 'razorpay', 'ccavenue', 'ebanx'];
-  const paymentSources = ['web', 'Manual', 'ios', 'android'];
-  const periods = ['monthly', 'yearly', 'oneTime'];
-  const currencies = ['USD', 'AUD', 'EUR', 'GBP', 'INR'];
-
-  const data = [];
-
-  for (let i = 0; i < count; i++) {
-    const subscriptionType = subscriptionTypes[Math.floor(Math.random() * subscriptionTypes.length)];
-    const amount = subscriptionType === 'trial' ? 16 : Math.floor(Math.random() * 300) + 36;
-    const appIndex = Math.floor(Math.random() * appNames.length);
-    const period = periods[Math.floor(Math.random() * periods.length)];
-    const hasInvoice = Math.random() > 0.3;
-    const hasSignedAgreement = Math.random() > 0.5;
-
-    const date = new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000);
-    const formattedDate = `${date.getDate().toString().padStart(2, '0')} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][date.getMonth()]} ${date.getFullYear()}, ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')} ${date.getHours() >= 12 ? 'PM' : 'AM'}`;
-
-    data.push({
-      id: i + 1,
-      app_id: `${Math.random().toString(36).substring(2, 12)}`,
-      app_name: appNames[appIndex],
-      email: `user${i + 1}@${['gmail.com', 'yahoo.com', 'outlook.com', 'example.org'][Math.floor(Math.random() * 4)]}`,
-      message: `${subscriptionType === 'renewal' ? 'Renewal' : subscriptionType === 'upgrade' ? 'Upgrade' : ''} subscription for ${appNames[appIndex]} ${period.charAt(0).toUpperCase() + period.slice(1)} Plan${subscriptionType !== 'trial' ? ' (Essential)' : ' Basic'} - ${Math.random().toString(36).substring(2, 8)}`,
-      payment_period: period,
-      amount: amount.toString(),
-      currency: currencies[Math.floor(Math.random() * currencies.length)],
-      tax_amount: '0',
-      invoice_id: `C${387340 + i}`,
-      transaction_id: `ch_${Math.random().toString(36).substring(2, 10)}${Math.random().toString(36).substring(2, 10)}${Math.random().toString(36).substring(2, 10)}`,
-      payment_mode: paymentModes[Math.floor(Math.random() * paymentModes.length)],
-      payment_source: paymentSources[Math.floor(Math.random() * paymentSources.length)],
-      device_selection: Math.random() > 0.7 ? 'mobile' : 'desktop',
-      refund_status: 'No',
-      ip_address: `${Math.floor(Math.random() * 200) + 50}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
-      last_payment_date: formattedDate,
-      claim_to: null,
-      subscription_type: subscriptionType,
-      product_name: appNames[appIndex],
-      product_id: `prod_${appIndex + 1}`,
-      addon_name: Math.random() > 0.7 ? 'Premium Support' : null,
-      language: 'en',
-      claimed_user: null,
-      has_invoice: hasInvoice,
-      has_signed_agreement: hasSignedAgreement
-    });
-  }
-
-  return data;
-}
-
-// Calculate summary from data
-function calculateSummary(data) {
-  const summary = {
-    trial: { count: 0, amount: 0 },
-    upgrade: { count: 0, amount: 0 },
-    renewal: { count: 0, amount: 0 },
-    total: { count: 0, amount: 0 }
-  };
-
-  data.forEach(item => {
-    const amount = parseFloat(item.amount) || 0;
-    if (item.subscription_type === 'trial') {
-      summary.trial.count++;
-      summary.trial.amount += amount;
-    } else if (item.subscription_type === 'upgrade') {
-      summary.upgrade.count++;
-      summary.upgrade.amount += amount;
-    } else if (item.subscription_type === 'renewal') {
-      summary.renewal.count++;
-      summary.renewal.amount += amount;
-    }
-  });
-
-  summary.total.count = summary.trial.count + summary.upgrade.count + summary.renewal.count;
-  summary.total.amount = summary.trial.amount + summary.upgrade.amount + summary.renewal.amount;
-
-  return summary;
-}
-
 // Format timestamp to readable date
 function formatTimestamp(timestamp) {
   if (!timestamp) return '-';
@@ -101,300 +17,244 @@ function formatTimestamp(timestamp) {
   return `${day} ${month} ${year}, ${displayHours}:${minutes} ${ampm}`;
 }
 
-// Mock products data
-const mockProducts = [
-  { id: 1, name: 'Appy Pie App' },
-  { id: 2, name: 'Design Studio' },
-  { id: 3, name: 'Chatbot Builder' },
-  { id: 4, name: 'Website Builder' },
-  { id: 5, name: 'Form Builder' }
-];
+// Format label helper - capitalize first letter and handle special cases
+function formatLabel(value) {
+  if (!value) return '';
+  const specialLabels = {
+    'ios': 'iOS',
+    'android': 'Android',
+    'web': 'Web',
+    'paypal': 'PayPal',
+    'stripe': 'Stripe',
+    'razorpay': 'Razorpay',
+    'ccavenue': 'CCAvenue',
+    'ebanx': 'Ebanx',
+    'InApp-iOS': 'In-App (iOS)',
+    'InApp-Android': 'In-App (Android)',
+    'app': 'App',
+    'Manual': 'Manual',
+    'manually': 'Manual'
+  };
+  return specialLabels[value] || value.charAt(0).toUpperCase() + value.slice(1);
+}
 
-// Mock addons data
-const mockAddons = [
-  { id: 1, name: 'Premium Support' },
-  { id: 2, name: 'Extra Storage' },
-  { id: 3, name: 'API Access' },
-  { id: 4, name: 'White Label' },
-  { id: 5, name: 'Analytics Pro' }
-];
+// Format period label helper
+function formatPeriodLabel(value) {
+  if (!value) return '';
+  const periodLabels = {
+    'monthly': 'Monthly',
+    'yearly': 'Yearly',
+    'oneTime': 'One Time',
+    'lifetime': 'Lifetime',
+    'quarterly': 'Quarterly',
+    'half-yearly': 'Half Yearly',
+    'weekly': 'Weekly'
+  };
+  return periodLabels[value] || value.charAt(0).toUpperCase() + value.slice(1);
+}
 
-// Mock subscription types (based on payment_terms: 1=New, 2=Renewal, 3=Upgrade)
-const mockSubscriptionTypes = [
-  { value: 'new', label: 'New' },
-  { value: 'renewal', label: 'Renewal' },
-  { value: 'upgrade', label: 'Upgrade' }
-];
+// Country code to name mapping
+const countryNames = {
+  'ae': 'United Arab Emirates', 'ar': 'Argentina', 'at': 'Austria', 'au': 'Australia',
+  'as': 'American Samoa', 'be': 'Belgium', 'br': 'Brazil', 'ca': 'Canada', 'ch': 'Switzerland',
+  'cl': 'Chile', 'cn': 'China', 'co': 'Colombia', 'de': 'Germany', 'dk': 'Denmark',
+  'es': 'Spain', 'fi': 'Finland', 'fr': 'France', 'gb': 'United Kingdom', 'gr': 'Greece',
+  'hk': 'Hong Kong', 'id': 'Indonesia', 'ie': 'Ireland', 'il': 'Israel', 'in': 'India',
+  'it': 'Italy', 'jp': 'Japan', 'kr': 'South Korea', 'mx': 'Mexico', 'my': 'Malaysia',
+  'nl': 'Netherlands', 'no': 'Norway', 'nz': 'New Zealand', 'pe': 'Peru', 'ph': 'Philippines',
+  'pk': 'Pakistan', 'pl': 'Poland', 'pt': 'Portugal', 'ro': 'Romania', 'ru': 'Russia',
+  'sa': 'Saudi Arabia', 'se': 'Sweden', 'sg': 'Singapore', 'th': 'Thailand', 'tr': 'Turkey',
+  'tw': 'Taiwan', 'ua': 'Ukraine', 'us': 'United States', 'vn': 'Vietnam', 'za': 'South Africa'
+};
 
-// Mock payment modes
-const mockPaymentModes = [
-  { value: 'stripe', label: 'Stripe' },
-  { value: 'paypal', label: 'PayPal' },
-  { value: 'razorpay', label: 'Razorpay' },
-  { value: 'ccavenue', label: 'CCAvenue' },
-  { value: 'ebanx', label: 'Ebanx' }
-];
-
-// Mock payment sources
-const mockPaymentSources = [
-  { value: 'web', label: 'Web' },
-  { value: 'Manual', label: 'Manual' },
-  { value: 'ios', label: 'iOS' },
-  { value: 'android', label: 'Android' }
-];
-
-// Mock subscription periods
-const mockSubscriptionPeriods = [
-  { value: 'monthly', label: 'Monthly' },
-  { value: 'yearly', label: 'Yearly' },
-  { value: 'oneTime', label: 'One Time' }
-];
-
-// Mock languages
-const mockLanguages = [
-  { value: 'en', label: 'English' },
-  { value: 'es', label: 'Spanish' },
-  { value: 'fr', label: 'French' },
-  { value: 'de', label: 'German' },
-  { value: 'pt', label: 'Portuguese' },
-  { value: 'it', label: 'Italian' },
-  { value: 'ja', label: 'Japanese' },
-  { value: 'zh', label: 'Chinese' }
-];
-
-// Mock claimed user options
-const mockClaimedUsers = [
-  { value: 'claimed', label: 'Claimed' },
-  { value: 'unclaimed', label: 'Unclaimed' }
-];
-
-// Get payment logs with pagination, filters, and summary
+// Get payment logs with pagination, filters, and summary - ALL FROM DATABASE
 router.get('/', async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const offset = (page - 1) * limit;
 
-    let paymentLogs = [];
-    let total = 0;
-    let summary = {};
+    // Build filters from query params
+    const filters = [];
+    const filterParams = [];
 
-    try {
-      // Try database first with correct column names
-      const filters = [];
-      const filterParams = [];
+    if (req.query.searchByAppId) {
+      filters.push('(product_id LIKE ? OR order_id LIKE ?)');
+      filterParams.push(`%${req.query.searchByAppId}%`, `%${req.query.searchByAppId}%`);
+    }
+    if (req.query.searchByAppIdOrTransaction) {
+      filters.push('(product_id LIKE ? OR transaction_id LIKE ?)');
+      filterParams.push(`%${req.query.searchByAppIdOrTransaction}%`, `%${req.query.searchByAppIdOrTransaction}%`);
+    }
+    if (req.query.searchDate) {
+      const searchDate = new Date(req.query.searchDate);
+      const startOfDay = Math.floor(searchDate.getTime() / 1000);
+      const endOfDay = startOfDay + 86400;
+      filters.push('addedon >= ? AND addedon < ?');
+      filterParams.push(startOfDay, endOfDay);
+    }
+    if (req.query.subscriptionType) {
+      const typeMap = { 'new': 1, 'trial': 1, 'renewal': 2, 'upgrade': 3 };
+      const termValue = typeMap[req.query.subscriptionType.toLowerCase()];
+      if (termValue) {
+        filters.push('payment_terms = ?');
+        filterParams.push(termValue);
+      }
+    }
+    if (req.query.productId) {
+      filters.push('product_name = ?');
+      filterParams.push(req.query.productId);
+    }
+    if (req.query.subscriptionPeriod) {
+      filters.push('subscription_period = ?');
+      filterParams.push(req.query.subscriptionPeriod);
+    }
+    if (req.query.addons) {
+      filters.push('addon_type LIKE ?');
+      filterParams.push(`%${req.query.addons}%`);
+    }
+    if (req.query.paymentMode) {
+      filters.push('payment_method = ?');
+      filterParams.push(req.query.paymentMode);
+    }
+    if (req.query.paymentSource) {
+      filters.push('payment_source = ?');
+      filterParams.push(req.query.paymentSource);
+    }
+    if (req.query.claimedUser) {
+      if (req.query.claimedUser === 'claimed') {
+        filters.push('claim_user IS NOT NULL AND claim_user != ""');
+      } else if (req.query.claimedUser === 'unclaimed') {
+        filters.push('(claim_user IS NULL OR claim_user = "")');
+      } else {
+        filters.push('claim_user = ?');
+        filterParams.push(req.query.claimedUser);
+      }
+    }
+    if (req.query.language) {
+      filters.push('payment_country = ?');
+      filterParams.push(req.query.language);
+    }
 
-      // Search by product_id or order_id
-      if (req.query.searchByAppId) {
-        filters.push('(product_id LIKE ? OR order_id LIKE ?)');
-        filterParams.push(`%${req.query.searchByAppId}%`, `%${req.query.searchByAppId}%`);
-      }
-      // Search by product_id or transaction_id
-      if (req.query.searchByAppIdOrTransaction) {
-        filters.push('(product_id LIKE ? OR transaction_id LIKE ?)');
-        filterParams.push(`%${req.query.searchByAppIdOrTransaction}%`, `%${req.query.searchByAppIdOrTransaction}%`);
-      }
-      // Search by date (addedon is timestamp in seconds)
-      if (req.query.searchDate) {
-        const searchDate = new Date(req.query.searchDate);
-        const startOfDay = Math.floor(searchDate.getTime() / 1000);
-        const endOfDay = startOfDay + 86400;
-        filters.push('addedon >= ? AND addedon < ?');
-        filterParams.push(startOfDay, endOfDay);
-      }
-      // Filter by payment_terms (subscription type): new=1, renewal=2, upgrade=3
-      if (req.query.subscriptionType) {
-        const typeMap = { 'new': 1, 'trial': 1, 'renewal': 2, 'upgrade': 3 };
-        const termValue = typeMap[req.query.subscriptionType.toLowerCase()];
-        if (termValue) {
-          filters.push('payment_terms = ?');
-          filterParams.push(termValue);
-        }
-      }
-      // Filter by product_name
-      if (req.query.productId) {
-        filters.push('product_name = ?');
-        filterParams.push(req.query.productId);
-      }
-      // Filter by subscription_period
-      if (req.query.subscriptionPeriod) {
-        filters.push('subscription_period = ?');
-        filterParams.push(req.query.subscriptionPeriod);
-      }
-      // Filter by addon_type
-      if (req.query.addons) {
-        filters.push('addon_type LIKE ?');
-        filterParams.push(`%${req.query.addons}%`);
-      }
-      // Filter by payment_method (payment mode)
-      if (req.query.paymentMode) {
-        filters.push('payment_method = ?');
-        filterParams.push(req.query.paymentMode);
-      }
-      // Filter by payment_source
-      if (req.query.paymentSource) {
-        filters.push('payment_source = ?');
-        filterParams.push(req.query.paymentSource);
-      }
-      // Filter by claimed user
-      if (req.query.claimedUser) {
-        if (req.query.claimedUser === 'claimed') {
-          filters.push('claim_user IS NOT NULL AND claim_user != ""');
-        } else if (req.query.claimedUser === 'unclaimed') {
-          filters.push('(claim_user IS NULL OR claim_user = "")');
-        } else {
-          // Filter by specific user name
-          filters.push('claim_user = ?');
-          filterParams.push(req.query.claimedUser);
-        }
-      }
-      // Filter by language/country
-      if (req.query.language) {
-        filters.push('payment_country = ?');
-        filterParams.push(req.query.language);
-      }
+    const whereClause = filters.length > 0 ? `WHERE ${filters.join(' AND ')}` : '';
 
-      const whereClause = filters.length > 0 ? `WHERE ${filters.join(' AND ')}` : '';
+    // Count total records from database
+    const countQuery = `SELECT COUNT(*) as total FROM checkout.appypie_payment_log ${whereClause}`;
+    const [countResult] = await pool.execute(countQuery, filterParams);
+    const total = countResult[0].total;
 
-      // Count total records
-      const countQuery = `SELECT COUNT(*) as total FROM checkout.appypie_payment_log ${whereClause}`;
-      const [countResult] = await pool.execute(countQuery, filterParams);
-      total = countResult[0].total;
+    // Calculate summary from database
+    const summaryQuery = `
+      SELECT
+        SUM(CASE WHEN payment_terms = 1 THEN 1 ELSE 0 END) as trial_count,
+        SUM(CASE WHEN payment_terms = 1 THEN CAST(COALESCE(net_amount, plan_price, 0) AS DECIMAL(10,2)) ELSE 0 END) as trial_amount,
+        SUM(CASE WHEN payment_terms = 3 THEN 1 ELSE 0 END) as upgrade_count,
+        SUM(CASE WHEN payment_terms = 3 THEN CAST(COALESCE(net_amount, plan_price, 0) AS DECIMAL(10,2)) ELSE 0 END) as upgrade_amount,
+        SUM(CASE WHEN payment_terms = 2 THEN 1 ELSE 0 END) as renewal_count,
+        SUM(CASE WHEN payment_terms = 2 THEN CAST(COALESCE(net_amount, plan_price, 0) AS DECIMAL(10,2)) ELSE 0 END) as renewal_amount
+      FROM checkout.appypie_payment_log ${whereClause}
+    `;
+    const [summaryResult] = await pool.execute(summaryQuery, filterParams);
+    const summaryRow = summaryResult[0];
 
-      // Calculate summary using payment_terms: 1=New/Trial, 2=Renewal, 3=Upgrade
-      const summaryQuery = `
-        SELECT
-          SUM(CASE WHEN payment_terms = 1 THEN 1 ELSE 0 END) as trial_count,
-          SUM(CASE WHEN payment_terms = 1 THEN CAST(COALESCE(net_amount, plan_price, 0) AS DECIMAL(10,2)) ELSE 0 END) as trial_amount,
-          SUM(CASE WHEN payment_terms = 3 THEN 1 ELSE 0 END) as upgrade_count,
-          SUM(CASE WHEN payment_terms = 3 THEN CAST(COALESCE(net_amount, plan_price, 0) AS DECIMAL(10,2)) ELSE 0 END) as upgrade_amount,
-          SUM(CASE WHEN payment_terms = 2 THEN 1 ELSE 0 END) as renewal_count,
-          SUM(CASE WHEN payment_terms = 2 THEN CAST(COALESCE(net_amount, plan_price, 0) AS DECIMAL(10,2)) ELSE 0 END) as renewal_amount
-        FROM checkout.appypie_payment_log ${whereClause}
-      `;
-      const [summaryResult] = await pool.execute(summaryQuery, filterParams);
-      const summaryRow = summaryResult[0];
+    const summary = {
+      trial: {
+        count: parseInt(summaryRow.trial_count) || 0,
+        amount: parseFloat(summaryRow.trial_amount) || 0
+      },
+      upgrade: {
+        count: parseInt(summaryRow.upgrade_count) || 0,
+        amount: parseFloat(summaryRow.upgrade_amount) || 0
+      },
+      renewal: {
+        count: parseInt(summaryRow.renewal_count) || 0,
+        amount: parseFloat(summaryRow.renewal_amount) || 0
+      },
+      total: {
+        count: (parseInt(summaryRow.trial_count) || 0) + (parseInt(summaryRow.upgrade_count) || 0) + (parseInt(summaryRow.renewal_count) || 0),
+        amount: (parseFloat(summaryRow.trial_amount) || 0) + (parseFloat(summaryRow.upgrade_amount) || 0) + (parseFloat(summaryRow.renewal_amount) || 0)
+      }
+    };
 
-      summary = {
-        trial: {
-          count: parseInt(summaryRow.trial_count) || 0,
-          amount: parseFloat(summaryRow.trial_amount) || 0
-        },
-        upgrade: {
-          count: parseInt(summaryRow.upgrade_count) || 0,
-          amount: parseFloat(summaryRow.upgrade_amount) || 0
-        },
-        renewal: {
-          count: parseInt(summaryRow.renewal_count) || 0,
-          amount: parseFloat(summaryRow.renewal_amount) || 0
-        },
-        total: {
-          count: (parseInt(summaryRow.trial_count) || 0) + (parseInt(summaryRow.upgrade_count) || 0) + (parseInt(summaryRow.renewal_count) || 0),
-          amount: (parseFloat(summaryRow.trial_amount) || 0) + (parseFloat(summaryRow.upgrade_amount) || 0) + (parseFloat(summaryRow.renewal_amount) || 0)
-        }
-      };
+    // Get paginated data from database
+    const dataQuery = `
+      SELECT
+        id,
+        product_id as app_id,
+        product_name as app_name,
+        user_id,
+        description as message,
+        subscription_period as payment_period,
+        COALESCE(net_amount, plan_price) as amount,
+        currency,
+        tax_amount,
+        invoice_id,
+        transaction_id,
+        payment_method as payment_mode,
+        payment_source,
+        'desktop' as device_selection,
+        COALESCE(refund_status, 'No') as refund_status,
+        ip_address,
+        addedon as last_payment_date,
+        claim_user as claim_to,
+        CASE
+          WHEN payment_terms = 1 THEN 'New'
+          WHEN payment_terms = 2 THEN 'Renewal'
+          WHEN payment_terms = 3 THEN 'Upgrade'
+          ELSE customer_payment_type
+        END as subscription_type,
+        product_name,
+        product_id,
+        addon_type as addon_name,
+        payment_country as language,
+        claim_user as claimed_user,
+        plan_id,
+        coupon_code,
+        discount_amount,
+        CASE WHEN invoice_id IS NOT NULL AND invoice_id != '' THEN 1 ELSE 0 END as has_invoice,
+        0 as has_signed_agreement
+      FROM checkout.appypie_payment_log
+      ${whereClause}
+      ORDER BY id DESC
+      LIMIT ? OFFSET ?
+    `;
 
-      // Get paginated data with JOIN to billing_address for emails and subscription for more details
-      const dataQuery = `
-        SELECT
-          pl.id,
-          pl.product_id as app_id,
-          pl.product_name as app_name,
-          pl.user_id,
-          pl.description as message,
-          pl.subscription_period as payment_period,
-          COALESCE(pl.net_amount, pl.plan_price) as amount,
-          pl.currency,
-          pl.tax_amount,
-          pl.invoice_id,
-          pl.transaction_id,
-          pl.payment_method as payment_mode,
-          pl.payment_source,
-          'desktop' as device_selection,
-          COALESCE(pl.refund_status, 'No') as refund_status,
-          pl.ip_address,
-          pl.addedon as last_payment_date,
-          pl.claim_user as claim_to,
-          CASE
-            WHEN pl.payment_terms = 1 THEN 'New'
-            WHEN pl.payment_terms = 2 THEN 'Renewal'
-            WHEN pl.payment_terms = 3 THEN 'Upgrade'
-            ELSE pl.customer_payment_type
-          END as subscription_type,
-          pl.product_name,
-          pl.product_id,
-          pl.addon_type as addon_name,
-          pl.payment_country as language,
-          pl.claim_user as claimed_user,
-          pl.plan_id,
-          pl.coupon_code,
-          pl.discount_amount,
-          CASE WHEN pl.invoice_id IS NOT NULL AND pl.invoice_id != '' THEN 1 ELSE 0 END as has_invoice,
-          0 as has_signed_agreement,
-          ba.email as billing_email,
-          ba.first_name,
-          ba.last_name,
-          ba.phone as billing_phone,
-          ba.company,
-          sub.auto_renewal_status,
-          sub.subscription_start_date,
-          sub.subscription_end_date,
-          sub.cancel_flag,
-          sub.trial_flag,
-          pln.plan_name
-        FROM checkout.appypie_payment_log pl
-        LEFT JOIN checkout.appypie_billing_address ba ON pl.product_id = ba.product_id AND pl.user_id = ba.user_id
-        LEFT JOIN checkout.appypie_subscription sub ON pl.product_id = sub.product_id AND pl.user_id = sub.user_id
-        LEFT JOIN checkout.appypie_plan pln ON pl.plan_id = pln.id
-        ${whereClause.replace(/(\b(?:product_id|product_name|user_id|payment_method|payment_source|payment_country|claim_user|subscription_period|addon_type|payment_terms)\b)/g, 'pl.$1')}
-        ORDER BY pl.id DESC
-        LIMIT ? OFFSET ?
-      `;
+    const [dbLogs] = await pool.execute(dataQuery, [...filterParams, limit, offset]);
 
-      const [dbLogs] = await pool.execute(dataQuery, [...filterParams, limit, offset]);
-      paymentLogs = dbLogs.map(log => ({
+    // Fetch billing emails from appypie_billing_address
+    const userIds = [...new Set(dbLogs.map(log => log.user_id))];
+    let billingEmails = {};
+
+    if (userIds.length > 0) {
+      try {
+        const [billingData] = await pool.execute(
+          `SELECT user_id, product_id, email, first_name, last_name
+           FROM checkout.appypie_billing_address
+           WHERE user_id IN (${userIds.map(() => '?').join(',')})`,
+          userIds
+        );
+        billingData.forEach(b => {
+          billingEmails[`${b.user_id}_${b.product_id}`] = b;
+        });
+      } catch (e) {
+        console.log('Could not fetch billing emails:', e.message);
+      }
+    }
+
+    // Map payment logs with billing info
+    const paymentLogs = dbLogs.map(log => {
+      const billingInfo = billingEmails[`${log.user_id}_${log.app_id}`] || {};
+      return {
         ...log,
-        email: log.billing_email || `user${log.user_id}@appypie.com`,
-        customer_name: log.first_name && log.last_name ? `${log.first_name} ${log.last_name}` : null,
+        email: billingInfo.email || `user${log.user_id}@appypie.com`,
+        customer_name: billingInfo.first_name && billingInfo.last_name
+          ? `${billingInfo.first_name} ${billingInfo.last_name}`
+          : null,
         last_payment_date: formatTimestamp(log.last_payment_date),
         has_invoice: Boolean(log.has_invoice),
-        has_signed_agreement: Boolean(log.has_signed_agreement),
-        auto_renewal: log.auto_renewal_status || 'Unknown',
-        is_cancelled: Boolean(log.cancel_flag),
-        is_trial: Boolean(log.trial_flag)
-      }));
-
-    } catch (dbError) {
-      // Fallback to mock data if database fails
-      console.log('Database unavailable, using mock data:', dbError.message);
-
-      let mockData = generateMockData(50);
-
-      // Apply filters to mock data
-      if (req.query.subscriptionType) {
-        mockData = mockData.filter(d => d.subscription_type === req.query.subscriptionType);
-      }
-      if (req.query.paymentMode) {
-        mockData = mockData.filter(d => d.payment_mode === req.query.paymentMode);
-      }
-      if (req.query.paymentSource) {
-        mockData = mockData.filter(d => d.payment_source === req.query.paymentSource);
-      }
-      if (req.query.subscriptionPeriod) {
-        mockData = mockData.filter(d => d.payment_period === req.query.subscriptionPeriod);
-      }
-      if (req.query.searchByAppIdOrTransaction) {
-        const search = req.query.searchByAppIdOrTransaction.toLowerCase();
-        mockData = mockData.filter(d =>
-          d.app_id.toLowerCase().includes(search) ||
-          d.transaction_id.toLowerCase().includes(search)
-        );
-      }
-
-      total = mockData.length;
-      summary = calculateSummary(mockData);
-      paymentLogs = mockData.slice(offset, offset + limit);
-    }
+        has_signed_agreement: Boolean(log.has_signed_agreement)
+      };
+    });
 
     res.json({
       success: true,
@@ -417,160 +277,162 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get all filter options in a single call - MUST be before /:id route
+// Get all filter options - ALL FROM DATABASE
 router.get('/filters/all', async (req, res) => {
   try {
-    let products = mockProducts;
-    let addons = mockAddons;
-    let subscriptionTypes = mockSubscriptionTypes;
-    let paymentModes = mockPaymentModes;
-    let paymentSources = mockPaymentSources;
-    let subscriptionPeriods = mockSubscriptionPeriods;
-    let languages = mockLanguages;
-    let claimedUsers = mockClaimedUsers;
+    let products = [];
+    let plans = [];
+    let addons = [];
+    let subscriptionTypes = [];
+    let paymentModes = [];
+    let paymentSources = [];
+    let subscriptionPeriods = [];
+    let languages = [];
+    let claimedUsers = [];
+    let currencies = [];
 
-    try {
-      // Fetch products from appypie_product table
-      const [dbProducts] = await pool.execute(
-        'SELECT id, name FROM checkout.appypie_product WHERE status = 1 ORDER BY name ASC'
-      );
-      if (dbProducts.length > 0) products = dbProducts;
+    // 1. Fetch products from appypie_product table
+    const [dbProducts] = await pool.execute(
+      'SELECT id, name FROM checkout.appypie_product WHERE status = 1 ORDER BY name ASC'
+    );
+    products = dbProducts;
 
-      // Use payment_terms for subscription types: 1=New, 2=Renewal, 3=Upgrade
-      const [dbTypes] = await pool.execute(
-        'SELECT DISTINCT payment_terms FROM checkout.appypie_payment_log WHERE payment_terms IS NOT NULL ORDER BY payment_terms'
-      );
-      if (dbTypes.length > 0) {
-        const typeLabels = { 1: 'New', 2: 'Renewal', 3: 'Upgrade' };
-        const typeValues = { 1: 'new', 2: 'renewal', 3: 'upgrade' };
-        subscriptionTypes = dbTypes.map(t => ({
-          value: typeValues[t.payment_terms] || t.payment_terms.toString(),
-          label: typeLabels[t.payment_terms] || `Type ${t.payment_terms}`
-        }));
-      }
+    // 2. Fetch plans from appypie_plan table
+    const [dbPlans] = await pool.execute(
+      'SELECT id, plan_name as name, identifire as identifier, product_name as productName FROM checkout.appypie_plan WHERE status = 1 ORDER BY sortorder ASC'
+    );
+    plans = dbPlans;
 
-      const [dbModes] = await pool.execute(
-        'SELECT DISTINCT payment_method as value FROM checkout.appypie_payment_log WHERE payment_method IS NOT NULL AND payment_method != "" ORDER BY payment_method ASC'
-      );
-      if (dbModes.length > 0) {
-        paymentModes = dbModes.map(m => ({
-          value: m.value,
-          label: m.value.charAt(0).toUpperCase() + m.value.slice(1)
-        }));
-      }
-
-      const [dbSources] = await pool.execute(
-        'SELECT DISTINCT payment_source as value FROM checkout.appypie_payment_log WHERE payment_source IS NOT NULL AND payment_source != "" ORDER BY payment_source ASC'
-      );
-      if (dbSources.length > 0) {
-        paymentSources = dbSources.map(s => ({
-          value: s.value,
-          label: s.value.charAt(0).toUpperCase() + s.value.slice(1)
-        }));
-      }
-
-      const [dbPeriods] = await pool.execute(
-        'SELECT DISTINCT subscription_period as value FROM checkout.appypie_payment_log WHERE subscription_period IS NOT NULL AND subscription_period != "" ORDER BY subscription_period ASC'
-      );
-      if (dbPeriods.length > 0) {
-        subscriptionPeriods = dbPeriods.map(p => ({
-          value: p.value,
-          label: p.value === 'oneTime' ? 'One Time' : p.value.charAt(0).toUpperCase() + p.value.slice(1)
-        }));
-      }
-
+    // 3. Fetch addons from appypie_addon_plan table
+    const [dbAddonPlans] = await pool.execute(
+      'SELECT id, plan_name as name, identifire as identifier, product_name as productName FROM checkout.appypie_addon_plan WHERE status = 1 ORDER BY sortorder ASC'
+    );
+    if (dbAddonPlans.length > 0) {
+      addons = dbAddonPlans;
+    } else {
+      // Fallback to addon_type from payment_log
       const [dbAddons] = await pool.execute(
         'SELECT DISTINCT addon_type as name FROM checkout.appypie_payment_log WHERE addon_type IS NOT NULL AND addon_type != "" ORDER BY addon_type ASC'
       );
-      if (dbAddons.length > 0) {
-        addons = dbAddons.map((a, index) => ({ id: index + 1, name: a.name }));
-      }
-
-      // Fetch countries from appypie_country table with currency info
-      const [dbCountriesFromTable] = await pool.execute(
-        'SELECT country as code, currencyCode, currencySign FROM checkout.appypie_country WHERE status = 1 ORDER BY sortOrder ASC'
-      );
-
-      // Also get distinct payment_country values from payment_log to show only used countries
-      const [usedCountries] = await pool.execute(
-        'SELECT DISTINCT payment_country as value FROM checkout.appypie_payment_log WHERE payment_country IS NOT NULL AND payment_country != "" ORDER BY payment_country ASC'
-      );
-
-      // Country code to name mapping (extended)
-      const countryNames = {
-        'ae': 'United Arab Emirates', 'ar': 'Argentina', 'at': 'Austria', 'au': 'Australia',
-        'be': 'Belgium', 'br': 'Brazil', 'ca': 'Canada', 'ch': 'Switzerland', 'cl': 'Chile',
-        'cn': 'China', 'co': 'Colombia', 'de': 'Germany', 'dk': 'Denmark', 'es': 'Spain',
-        'fi': 'Finland', 'fr': 'France', 'gb': 'United Kingdom', 'gr': 'Greece', 'hk': 'Hong Kong',
-        'id': 'Indonesia', 'ie': 'Ireland', 'il': 'Israel', 'in': 'India', 'it': 'Italy',
-        'jp': 'Japan', 'kr': 'South Korea', 'mx': 'Mexico', 'my': 'Malaysia', 'nl': 'Netherlands',
-        'no': 'Norway', 'nz': 'New Zealand', 'pe': 'Peru', 'ph': 'Philippines', 'pk': 'Pakistan',
-        'pl': 'Poland', 'pt': 'Portugal', 'ro': 'Romania', 'ru': 'Russia', 'sa': 'Saudi Arabia',
-        'se': 'Sweden', 'sg': 'Singapore', 'th': 'Thailand', 'tr': 'Turkey', 'tw': 'Taiwan',
-        'ua': 'Ukraine', 'us': 'United States', 'vn': 'Vietnam', 'za': 'South Africa',
-        'as': 'American Samoa', 'AE': 'United Arab Emirates', 'AR': 'Argentina', 'AT': 'Austria',
-        'AU': 'Australia', 'BE': 'Belgium', 'BR': 'Brazil', 'CA': 'Canada', 'CH': 'Switzerland',
-        'CL': 'Chile', 'CN': 'China', 'CO': 'Colombia', 'DE': 'Germany', 'DK': 'Denmark',
-        'ES': 'Spain', 'FI': 'Finland', 'FR': 'France', 'GB': 'United Kingdom', 'GR': 'Greece',
-        'HK': 'Hong Kong', 'ID': 'Indonesia', 'IE': 'Ireland', 'IL': 'Israel', 'IN': 'India',
-        'IT': 'Italy', 'JP': 'Japan', 'KR': 'South Korea', 'MX': 'Mexico', 'MY': 'Malaysia',
-        'NL': 'Netherlands', 'NO': 'Norway', 'NZ': 'New Zealand', 'PE': 'Peru', 'PH': 'Philippines',
-        'PK': 'Pakistan', 'PL': 'Poland', 'PT': 'Portugal', 'RO': 'Romania', 'RU': 'Russia',
-        'SA': 'Saudi Arabia', 'SE': 'Sweden', 'SG': 'Singapore', 'TH': 'Thailand', 'TR': 'Turkey',
-        'TW': 'Taiwan', 'UA': 'Ukraine', 'US': 'United States', 'VN': 'Vietnam', 'ZA': 'South Africa'
-      };
-
-      // Create a map of country codes to currency info from appypie_country
-      const countryCurrencyMap = {};
-      dbCountriesFromTable.forEach(c => {
-        countryCurrencyMap[c.code.toLowerCase()] = { currencyCode: c.currencyCode, currencySign: c.currencySign };
-        countryCurrencyMap[c.code.toUpperCase()] = { currencyCode: c.currencyCode, currencySign: c.currencySign };
-      });
-
-      if (usedCountries.length > 0) {
-        languages = usedCountries.map(c => {
-          const currencyInfo = countryCurrencyMap[c.value] || {};
-          const countryName = countryNames[c.value] || c.value;
-          return {
-            value: c.value,
-            label: currencyInfo.currencyCode ? `${countryName} (${currencyInfo.currencyCode})` : countryName,
-            currencyCode: currencyInfo.currencyCode || '',
-            currencySign: currencyInfo.currencySign || ''
-          };
-        });
-      }
-
-      // Fetch actual claimed users from database
-      const [dbClaimedUsers] = await pool.execute(
-        'SELECT DISTINCT claim_user as value FROM checkout.appypie_payment_log WHERE claim_user IS NOT NULL AND claim_user != "" ORDER BY claim_user ASC'
-      );
-      if (dbClaimedUsers.length > 0) {
-        // Add claimed/unclaimed options first, then actual user names
-        claimedUsers = [
-          { value: 'claimed', label: 'All Claimed' },
-          { value: 'unclaimed', label: 'Unclaimed' },
-          ...dbClaimedUsers.map(u => ({
-            value: u.value,
-            label: u.value
-          }))
-        ];
-      }
-
-    } catch (dbError) {
-      console.log('Database unavailable for filters, using mock data:', dbError.message);
+      addons = dbAddons.map((a, index) => ({ id: index + 1, name: a.name }));
     }
+
+    // 4. Fetch subscription types from payment_terms in payment_log
+    const [dbTypes] = await pool.execute(
+      'SELECT DISTINCT payment_terms FROM checkout.appypie_payment_log WHERE payment_terms IS NOT NULL ORDER BY payment_terms'
+    );
+    const typeLabels = { 1: 'New', 2: 'Renewal', 3: 'Upgrade' };
+    const typeValues = { 1: 'new', 2: 'renewal', 3: 'upgrade' };
+    subscriptionTypes = dbTypes.map(t => ({
+      value: typeValues[t.payment_terms] || t.payment_terms.toString(),
+      label: typeLabels[t.payment_terms] || `Type ${t.payment_terms}`
+    }));
+
+    // 5. Fetch payment modes from appypie_payment_log
+    const [dbModes] = await pool.execute(
+      'SELECT DISTINCT payment_method as value FROM checkout.appypie_payment_log WHERE payment_method IS NOT NULL AND payment_method != "" ORDER BY payment_method ASC'
+    );
+    paymentModes = dbModes.map(m => ({
+      value: m.value,
+      label: formatLabel(m.value)
+    }));
+
+    // 6. Fetch payment sources from appypie_payment_log
+    const [dbSources] = await pool.execute(
+      'SELECT DISTINCT payment_source as value FROM checkout.appypie_payment_log WHERE payment_source IS NOT NULL AND payment_source != "" ORDER BY payment_source ASC'
+    );
+    paymentSources = dbSources.map(s => ({
+      value: s.value,
+      label: formatLabel(s.value)
+    }));
+
+    // 7. Fetch subscription periods from appypie_pricing table
+    const [dbPricingPeriods] = await pool.execute(
+      'SELECT DISTINCT plan_period as value FROM checkout.appypie_pricing WHERE status = 1 ORDER BY plan_period ASC'
+    );
+    if (dbPricingPeriods.length > 0) {
+      subscriptionPeriods = dbPricingPeriods.map(p => ({
+        value: p.value,
+        label: formatPeriodLabel(p.value)
+      }));
+    } else {
+      // Fallback to payment_log
+      const [dbPeriods] = await pool.execute(
+        'SELECT DISTINCT subscription_period as value FROM checkout.appypie_payment_log WHERE subscription_period IS NOT NULL AND subscription_period != "" ORDER BY subscription_period ASC'
+      );
+      subscriptionPeriods = dbPeriods.map(p => ({
+        value: p.value,
+        label: formatPeriodLabel(p.value)
+      }));
+    }
+
+    // 8. Fetch countries from appypie_country table
+    const [dbCountries] = await pool.execute(
+      'SELECT country as code, currencyCode, currencySign FROM checkout.appypie_country WHERE status = 1 ORDER BY sortOrder ASC'
+    );
+
+    // Get distinct payment_country values from payment_log
+    const [usedCountries] = await pool.execute(
+      'SELECT DISTINCT payment_country as value FROM checkout.appypie_payment_log WHERE payment_country IS NOT NULL AND payment_country != "" ORDER BY payment_country ASC'
+    );
+
+    // Create currency map from appypie_country
+    const countryCurrencyMap = {};
+    dbCountries.forEach(c => {
+      const code = c.code.toLowerCase();
+      countryCurrencyMap[code] = { currencyCode: c.currencyCode, currencySign: c.currencySign };
+      countryCurrencyMap[code.toUpperCase()] = { currencyCode: c.currencyCode, currencySign: c.currencySign };
+    });
+
+    // Map used countries with currency info
+    languages = usedCountries.map(c => {
+      const code = c.value.toLowerCase();
+      const currencyInfo = countryCurrencyMap[code] || countryCurrencyMap[c.value] || {};
+      const countryName = countryNames[code] || countryNames[c.value] || c.value.toUpperCase();
+      return {
+        value: c.value,
+        label: currencyInfo.currencyCode ? `${countryName} (${currencyInfo.currencyCode})` : countryName,
+        currencyCode: currencyInfo.currencyCode || '',
+        currencySign: currencyInfo.currencySign || ''
+      };
+    });
+
+    // 9. Fetch currencies from appypie_country
+    const uniqueCurrencies = [...new Set(dbCountries.map(c => c.currencyCode))];
+    currencies = uniqueCurrencies.map(code => {
+      const country = dbCountries.find(c => c.currencyCode === code);
+      return {
+        code: code,
+        sign: country ? country.currencySign : ''
+      };
+    });
+
+    // 10. Fetch claimed users from appypie_payment_log
+    const [dbClaimedUsers] = await pool.execute(
+      'SELECT DISTINCT claim_user as value FROM checkout.appypie_payment_log WHERE claim_user IS NOT NULL AND claim_user != "" ORDER BY claim_user ASC'
+    );
+    claimedUsers = [
+      { value: 'claimed', label: 'All Claimed' },
+      { value: 'unclaimed', label: 'Unclaimed' },
+      ...dbClaimedUsers.map(u => ({
+        value: u.value,
+        label: u.value
+      }))
+    ];
 
     res.json({
       success: true,
       data: {
         products,
+        plans,
         addons,
         subscriptionTypes,
         paymentModes,
         paymentSources,
         subscriptionPeriods,
         languages,
-        claimedUsers
+        claimedUsers,
+        currencies
       }
     });
   } catch (error) {
@@ -583,51 +445,61 @@ router.get('/filters/all', async (req, res) => {
   }
 });
 
-// Get all products for filter dropdown
+// Get all products from appypie_product
 router.get('/products/list', async (req, res) => {
   try {
     const [products] = await pool.execute(
       'SELECT id, name FROM checkout.appypie_product WHERE status = 1 ORDER BY name ASC'
     );
-    res.json({ success: true, data: products.length > 0 ? products : mockProducts });
+    res.json({ success: true, data: products });
   } catch (error) {
-    console.log('Database unavailable for products, using mock data');
-    res.json({ success: true, data: mockProducts });
+    console.error('Error fetching products:', error);
+    res.status(500).json({ success: false, message: 'Error fetching products', error: error.message });
   }
 });
 
-// Get all addons for filter dropdown
+// Get all addons from appypie_addon_plan
 router.get('/addons/list', async (req, res) => {
   try {
     const [addons] = await pool.execute(
-      'SELECT DISTINCT addon_type as name FROM checkout.appypie_payment_log WHERE addon_type IS NOT NULL AND addon_type != ""'
+      'SELECT id, plan_name as name FROM checkout.appypie_addon_plan WHERE status = 1 ORDER BY sortorder ASC'
     );
-    const formattedAddons = addons.map((a, index) => ({ id: index + 1, name: a.name }));
-    res.json({ success: true, data: formattedAddons.length > 0 ? formattedAddons : mockAddons });
+    if (addons.length > 0) {
+      res.json({ success: true, data: addons });
+    } else {
+      // Fallback to payment_log addon_type
+      const [dbAddons] = await pool.execute(
+        'SELECT DISTINCT addon_type as name FROM checkout.appypie_payment_log WHERE addon_type IS NOT NULL AND addon_type != ""'
+      );
+      const formattedAddons = dbAddons.map((a, index) => ({ id: index + 1, name: a.name }));
+      res.json({ success: true, data: formattedAddons });
+    }
   } catch (error) {
-    console.log('Database unavailable for addons, using mock data');
-    res.json({ success: true, data: mockAddons });
+    console.error('Error fetching addons:', error);
+    res.status(500).json({ success: false, message: 'Error fetching addons', error: error.message });
   }
 });
 
-// Get all subscription types for filter dropdown
+// Get subscription types from payment_log
 router.get('/subscription-types/list', async (req, res) => {
   try {
     const [types] = await pool.execute(
-      'SELECT DISTINCT customer_payment_type as value FROM checkout.appypie_payment_log WHERE customer_payment_type IS NOT NULL AND customer_payment_type != "" ORDER BY customer_payment_type ASC'
+      'SELECT DISTINCT payment_terms FROM checkout.appypie_payment_log WHERE payment_terms IS NOT NULL ORDER BY payment_terms'
     );
+    const typeLabels = { 1: 'New', 2: 'Renewal', 3: 'Upgrade' };
+    const typeValues = { 1: 'new', 2: 'renewal', 3: 'upgrade' };
     const formattedTypes = types.map(t => ({
-      value: t.value,
-      label: t.value.charAt(0).toUpperCase() + t.value.slice(1)
+      value: typeValues[t.payment_terms] || t.payment_terms.toString(),
+      label: typeLabels[t.payment_terms] || `Type ${t.payment_terms}`
     }));
-    res.json({ success: true, data: formattedTypes.length > 0 ? formattedTypes : mockSubscriptionTypes });
+    res.json({ success: true, data: formattedTypes });
   } catch (error) {
-    console.log('Database unavailable for subscription types, using mock data');
-    res.json({ success: true, data: mockSubscriptionTypes });
+    console.error('Error fetching subscription types:', error);
+    res.status(500).json({ success: false, message: 'Error fetching subscription types', error: error.message });
   }
 });
 
-// Get all payment modes for filter dropdown
+// Get payment modes from payment_log
 router.get('/payment-modes/list', async (req, res) => {
   try {
     const [modes] = await pool.execute(
@@ -635,16 +507,16 @@ router.get('/payment-modes/list', async (req, res) => {
     );
     const formattedModes = modes.map(m => ({
       value: m.value,
-      label: m.value.charAt(0).toUpperCase() + m.value.slice(1)
+      label: formatLabel(m.value)
     }));
-    res.json({ success: true, data: formattedModes.length > 0 ? formattedModes : mockPaymentModes });
+    res.json({ success: true, data: formattedModes });
   } catch (error) {
-    console.log('Database unavailable for payment modes, using mock data');
-    res.json({ success: true, data: mockPaymentModes });
+    console.error('Error fetching payment modes:', error);
+    res.status(500).json({ success: false, message: 'Error fetching payment modes', error: error.message });
   }
 });
 
-// Get all payment sources for filter dropdown
+// Get payment sources from payment_log
 router.get('/payment-sources/list', async (req, res) => {
   try {
     const [sources] = await pool.execute(
@@ -652,106 +524,154 @@ router.get('/payment-sources/list', async (req, res) => {
     );
     const formattedSources = sources.map(s => ({
       value: s.value,
-      label: s.value.charAt(0).toUpperCase() + s.value.slice(1)
+      label: formatLabel(s.value)
     }));
-    res.json({ success: true, data: formattedSources.length > 0 ? formattedSources : mockPaymentSources });
+    res.json({ success: true, data: formattedSources });
   } catch (error) {
-    console.log('Database unavailable for payment sources, using mock data');
-    res.json({ success: true, data: mockPaymentSources });
+    console.error('Error fetching payment sources:', error);
+    res.status(500).json({ success: false, message: 'Error fetching payment sources', error: error.message });
   }
 });
 
-// Get all subscription periods for filter dropdown
+// Get subscription periods from appypie_pricing
 router.get('/subscription-periods/list', async (req, res) => {
   try {
     const [periods] = await pool.execute(
-      'SELECT DISTINCT subscription_period as value FROM checkout.appypie_payment_log WHERE subscription_period IS NOT NULL AND subscription_period != "" ORDER BY subscription_period ASC'
+      'SELECT DISTINCT plan_period as value FROM checkout.appypie_pricing WHERE status = 1 ORDER BY plan_period ASC'
     );
-    const formattedPeriods = periods.map(p => ({
-      value: p.value,
-      label: p.value === 'oneTime' ? 'One Time' : p.value.charAt(0).toUpperCase() + p.value.slice(1)
-    }));
-    res.json({ success: true, data: formattedPeriods.length > 0 ? formattedPeriods : mockSubscriptionPeriods });
+    if (periods.length > 0) {
+      const formattedPeriods = periods.map(p => ({
+        value: p.value,
+        label: formatPeriodLabel(p.value)
+      }));
+      res.json({ success: true, data: formattedPeriods });
+    } else {
+      // Fallback to payment_log
+      const [dbPeriods] = await pool.execute(
+        'SELECT DISTINCT subscription_period as value FROM checkout.appypie_payment_log WHERE subscription_period IS NOT NULL AND subscription_period != "" ORDER BY subscription_period ASC'
+      );
+      const formattedPeriods = dbPeriods.map(p => ({
+        value: p.value,
+        label: formatPeriodLabel(p.value)
+      }));
+      res.json({ success: true, data: formattedPeriods });
+    }
   } catch (error) {
-    console.log('Database unavailable for subscription periods, using mock data');
-    res.json({ success: true, data: mockSubscriptionPeriods });
+    console.error('Error fetching subscription periods:', error);
+    res.status(500).json({ success: false, message: 'Error fetching subscription periods', error: error.message });
   }
 });
 
-// Get all languages for filter dropdown
+// Get countries from appypie_country
 router.get('/languages/list', async (req, res) => {
-  res.json({ success: true, data: mockLanguages });
+  try {
+    const [dbCountries] = await pool.execute(
+      'SELECT country as code, currencyCode, currencySign FROM checkout.appypie_country WHERE status = 1 ORDER BY sortOrder ASC'
+    );
+    const languages = dbCountries.map(c => {
+      const code = c.code.toLowerCase();
+      const countryName = countryNames[code] || c.code.toUpperCase();
+      return {
+        value: c.code,
+        label: `${countryName} (${c.currencyCode})`,
+        currencyCode: c.currencyCode,
+        currencySign: c.currencySign
+      };
+    });
+    res.json({ success: true, data: languages });
+  } catch (error) {
+    console.error('Error fetching languages:', error);
+    res.status(500).json({ success: false, message: 'Error fetching languages', error: error.message });
+  }
 });
 
-// Get claimed user options for filter dropdown
+// Get claimed users from payment_log
 router.get('/claimed-users/list', async (req, res) => {
-  res.json({ success: true, data: mockClaimedUsers });
+  try {
+    const [dbClaimedUsers] = await pool.execute(
+      'SELECT DISTINCT claim_user as value FROM checkout.appypie_payment_log WHERE claim_user IS NOT NULL AND claim_user != "" ORDER BY claim_user ASC'
+    );
+    const claimedUsers = [
+      { value: 'claimed', label: 'All Claimed' },
+      { value: 'unclaimed', label: 'Unclaimed' },
+      ...dbClaimedUsers.map(u => ({
+        value: u.value,
+        label: u.value
+      }))
+    ];
+    res.json({ success: true, data: claimedUsers });
+  } catch (error) {
+    console.error('Error fetching claimed users:', error);
+    res.status(500).json({ success: false, message: 'Error fetching claimed users', error: error.message });
+  }
 });
 
-// Export payment logs as CSV
+// Export payment logs as CSV - ALL FROM DATABASE
 router.get('/export', async (req, res) => {
   try {
-    let paymentLogs = [];
+    const filters = [];
+    const filterParams = [];
 
-    try {
-      const filters = [];
-      const filterParams = [];
-
-      if (req.query.searchByAppId) {
-        filters.push('(product_id LIKE ? OR order_id LIKE ?)');
-        filterParams.push(`%${req.query.searchByAppId}%`, `%${req.query.searchByAppId}%`);
-      }
-      if (req.query.searchByAppIdOrTransaction) {
-        filters.push('(product_id LIKE ? OR transaction_id LIKE ?)');
-        filterParams.push(`%${req.query.searchByAppIdOrTransaction}%`, `%${req.query.searchByAppIdOrTransaction}%`);
-      }
-      if (req.query.subscriptionType) {
-        filters.push('customer_payment_type = ?');
-        filterParams.push(req.query.subscriptionType);
-      }
-      if (req.query.paymentMode) {
-        filters.push('payment_method = ?');
-        filterParams.push(req.query.paymentMode);
-      }
-
-      const whereClause = filters.length > 0 ? `WHERE ${filters.join(' AND ')}` : '';
-
-      const dataQuery = `
-        SELECT
-          id,
-          product_id as app_id,
-          product_name as app_name,
-          CONCAT('user', user_id, '@example.com') as email,
-          description as message,
-          subscription_period as payment_period,
-          COALESCE(net_amount, plan_price) as amount,
-          currency,
-          tax_amount,
-          invoice_id,
-          transaction_id,
-          payment_method as payment_mode,
-          payment_source,
-          refund_status,
-          ip_address,
-          addedon as last_payment_date,
-          claim_user as claim_to,
-          customer_payment_type as subscription_type,
-          product_name,
-          product_id
-        FROM checkout.appypie_payment_log
-        ${whereClause}
-        ORDER BY id DESC
-      `;
-
-      const [dbLogs] = await pool.execute(dataQuery, filterParams);
-      paymentLogs = dbLogs.map(log => ({
-        ...log,
-        last_payment_date: formatTimestamp(log.last_payment_date)
-      }));
-    } catch (dbError) {
-      // Use mock data if database fails
-      paymentLogs = generateMockData(50);
+    if (req.query.searchByAppId) {
+      filters.push('(product_id LIKE ? OR order_id LIKE ?)');
+      filterParams.push(`%${req.query.searchByAppId}%`, `%${req.query.searchByAppId}%`);
     }
+    if (req.query.searchByAppIdOrTransaction) {
+      filters.push('(product_id LIKE ? OR transaction_id LIKE ?)');
+      filterParams.push(`%${req.query.searchByAppIdOrTransaction}%`, `%${req.query.searchByAppIdOrTransaction}%`);
+    }
+    if (req.query.subscriptionType) {
+      const typeMap = { 'new': 1, 'trial': 1, 'renewal': 2, 'upgrade': 3 };
+      const termValue = typeMap[req.query.subscriptionType.toLowerCase()];
+      if (termValue) {
+        filters.push('payment_terms = ?');
+        filterParams.push(termValue);
+      }
+    }
+    if (req.query.paymentMode) {
+      filters.push('payment_method = ?');
+      filterParams.push(req.query.paymentMode);
+    }
+
+    const whereClause = filters.length > 0 ? `WHERE ${filters.join(' AND ')}` : '';
+
+    const dataQuery = `
+      SELECT
+        id,
+        product_id as app_id,
+        product_name as app_name,
+        CONCAT('user', user_id, '@appypie.com') as email,
+        description as message,
+        subscription_period as payment_period,
+        COALESCE(net_amount, plan_price) as amount,
+        currency,
+        tax_amount,
+        invoice_id,
+        transaction_id,
+        payment_method as payment_mode,
+        payment_source,
+        refund_status,
+        ip_address,
+        addedon as last_payment_date,
+        claim_user as claim_to,
+        CASE
+          WHEN payment_terms = 1 THEN 'New'
+          WHEN payment_terms = 2 THEN 'Renewal'
+          WHEN payment_terms = 3 THEN 'Upgrade'
+          ELSE customer_payment_type
+        END as subscription_type,
+        product_name,
+        product_id
+      FROM checkout.appypie_payment_log
+      ${whereClause}
+      ORDER BY id DESC
+    `;
+
+    const [dbLogs] = await pool.execute(dataQuery, filterParams);
+    const paymentLogs = dbLogs.map(log => ({
+      ...log,
+      last_payment_date: formatTimestamp(log.last_payment_date)
+    }));
 
     // Generate CSV content
     const headers = [
@@ -803,12 +723,11 @@ router.get('/export', async (req, res) => {
   }
 });
 
-// Download invoice for a payment log
+// Download invoice for a payment log - FROM DATABASE
 router.get('/invoice/:id', async (req, res) => {
   try {
     const paymentId = req.params.id;
 
-    // Fetch payment log details
     const [paymentLogs] = await pool.execute(
       `SELECT
         id,
@@ -838,7 +757,24 @@ router.get('/invoice/:id', async (req, res) => {
 
     const log = paymentLogs[0];
 
-    // Generate a simple text invoice (can be enhanced to PDF later)
+    // Get billing address for customer details
+    let customerEmail = `user${log.user_id}@appypie.com`;
+    let customerName = 'N/A';
+    try {
+      const [billing] = await pool.execute(
+        'SELECT email, first_name, last_name, address, city, state, zip FROM checkout.appypie_billing_address WHERE user_id = ? AND product_id = ? LIMIT 1',
+        [log.user_id, log.product_id]
+      );
+      if (billing.length > 0) {
+        customerEmail = billing[0].email || customerEmail;
+        customerName = billing[0].first_name && billing[0].last_name
+          ? `${billing[0].first_name} ${billing[0].last_name}`
+          : 'N/A';
+      }
+    } catch (e) {
+      console.log('Could not fetch billing address:', e.message);
+    }
+
     const invoiceDate = formatTimestamp(log.addedon);
     const invoiceContent = `
 ================================================================================
@@ -853,6 +789,8 @@ Transaction ID:      ${log.transaction_id || 'N/A'}
                               CUSTOMER DETAILS
 --------------------------------------------------------------------------------
 
+Customer Name:       ${customerName}
+Customer Email:      ${customerEmail}
 Product ID:          ${log.product_id || 'N/A'}
 User ID:             ${log.user_id || 'N/A'}
 
@@ -894,7 +832,7 @@ Total:               ${log.currency || 'USD'} ${(parseFloat(log.amount || 0) + p
   }
 });
 
-// Get payment log by ID - MUST be last route
+// Get payment log by ID - FROM DATABASE
 router.get('/:id', async (req, res) => {
   try {
     const [paymentLogs] = await pool.execute(
@@ -902,7 +840,7 @@ router.get('/:id', async (req, res) => {
         id,
         product_id as app_id,
         product_name as app_name,
-        CONCAT('user', user_id, '@example.com') as email,
+        user_id,
         description as message,
         subscription_period as payment_period,
         COALESCE(net_amount, plan_price) as amount,
@@ -917,7 +855,12 @@ router.get('/:id', async (req, res) => {
         ip_address,
         addedon as last_payment_date,
         claim_user as claim_to,
-        customer_payment_type as subscription_type,
+        CASE
+          WHEN payment_terms = 1 THEN 'New'
+          WHEN payment_terms = 2 THEN 'Renewal'
+          WHEN payment_terms = 3 THEN 'Upgrade'
+          ELSE customer_payment_type
+        END as subscription_type,
         product_name,
         product_id,
         addon_type as addon_name
@@ -926,12 +869,6 @@ router.get('/:id', async (req, res) => {
     );
 
     if (paymentLogs.length === 0) {
-      // Try mock data
-      const mockData = generateMockData(50);
-      const mockLog = mockData.find(d => d.id === parseInt(req.params.id));
-      if (mockLog) {
-        return res.json({ success: true, data: mockLog });
-      }
       return res.status(404).json({
         success: false,
         message: 'Payment log not found'
@@ -939,20 +876,31 @@ router.get('/:id', async (req, res) => {
     }
 
     const log = paymentLogs[0];
+
+    // Get billing email
+    let email = `user${log.user_id}@appypie.com`;
+    try {
+      const [billing] = await pool.execute(
+        'SELECT email FROM checkout.appypie_billing_address WHERE user_id = ? AND product_id = ? LIMIT 1',
+        [log.user_id, log.app_id]
+      );
+      if (billing.length > 0 && billing[0].email) {
+        email = billing[0].email;
+      }
+    } catch (e) {
+      console.log('Could not fetch billing email:', e.message);
+    }
+
     res.json({
       success: true,
       data: {
         ...log,
+        email,
         last_payment_date: formatTimestamp(log.last_payment_date)
       }
     });
   } catch (error) {
-    // Try mock data on error
-    const mockData = generateMockData(50);
-    const mockLog = mockData.find(d => d.id === parseInt(req.params.id));
-    if (mockLog) {
-      return res.json({ success: true, data: mockLog });
-    }
+    console.error('Error fetching payment log:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching payment log',
