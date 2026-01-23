@@ -85,6 +85,10 @@ export class DashboardComponent implements OnInit {
     this.router.navigate(['/subscriptions']);
   }
 
+  goToPaymentLogs(): void {
+    this.router.navigate(['/payment-logs']);
+  }
+
   onLogout(): void {
     this.authService.logout();
     this.router.navigate(['/login']);
