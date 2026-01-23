@@ -53,6 +53,7 @@ export class SubscriptionsComponent implements OnInit {
     productId: '',
     planName: '',
     period: '',
+    paymentMethod: '',
     startDate: null as Date | null,
     renewalDate: null as Date | null
   };
@@ -117,6 +118,7 @@ export class SubscriptionsComponent implements OnInit {
       productId: this.filters.productId,
       planName: this.filters.planName,
       period: this.filters.period,
+      paymentMethod: this.filters.paymentMethod,
       startDate: this.filters.startDate ? this.formatDate(this.filters.startDate) : '',
       renewalDate: this.filters.renewalDate ? this.formatDate(this.filters.renewalDate) : ''
     };
@@ -163,6 +165,7 @@ export class SubscriptionsComponent implements OnInit {
       productId: '',
       planName: '',
       period: '',
+      paymentMethod: '',
       startDate: null,
       renewalDate: null
     };
@@ -174,6 +177,7 @@ export class SubscriptionsComponent implements OnInit {
            this.filters.productId !== '' ||
            this.filters.planName !== '' ||
            this.filters.period !== '' ||
+           this.filters.paymentMethod !== '' ||
            this.filters.startDate !== null ||
            this.filters.renewalDate !== null;
   }

@@ -31,6 +31,10 @@ router.get('/', async (req, res) => {
       filters.push('s.subscription_period LIKE ?');
       filterParams.push(`%${req.query.period}%`);
     }
+    if (req.query.paymentMethod) {
+      filters.push('s.payment_method LIKE ?');
+      filterParams.push(`%${req.query.paymentMethod}%`);
+    }
     if (req.query.startDate) {
       filters.push('s.subscription_start_date LIKE ?');
       filterParams.push(`%${req.query.startDate}%`);

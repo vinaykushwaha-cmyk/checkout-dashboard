@@ -66,6 +66,7 @@ export class SubscriptionService {
       if (filters.productId) params += `&productId=${encodeURIComponent(filters.productId)}`;
       if (filters.planName) params += `&planName=${encodeURIComponent(filters.planName)}`;
       if (filters.period) params += `&period=${encodeURIComponent(filters.period)}`;
+      if (filters.paymentMethod) params += `&paymentMethod=${encodeURIComponent(filters.paymentMethod)}`;
       if (filters.startDate) params += `&startDate=${encodeURIComponent(filters.startDate)}`;
       if (filters.renewalDate) params += `&renewalDate=${encodeURIComponent(filters.renewalDate)}`;
     }
