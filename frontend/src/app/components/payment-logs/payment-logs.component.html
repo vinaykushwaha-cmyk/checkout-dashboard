@@ -1,0 +1,310 @@
+<div class="dashboard-layout">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h2>Admin</h2>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-item" (click)="goToDashboard()">
+        <mat-icon>dashboard</mat-icon>
+        <span>Dashboard</span>
+      </a>
+      <a class="nav-item active" (click)="goToPaymentLogs()">
+        <mat-icon>payment</mat-icon>
+        <span>Payments</span>
+      </a>
+      <a class="nav-item" (click)="goToSubscriptions()">
+        <mat-icon>subscriptions</mat-icon>
+        <span>Subscriptions</span>
+      </a>
+      <a class="nav-item">
+        <mat-icon>people</mat-icon>
+        <span>Users</span>
+      </a>
+      <a class="nav-item logout" (click)="onLogout()">
+        <mat-icon>logout</mat-icon>
+        <span>Logout</span>
+      </a>
+    </nav>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <!-- Page Title -->
+    <div class="page-title-bar">
+      <h1>Product Payment Log - Total <span class="record-count">{{ totalItems }}(s)</span> records found!</h1>
+      <div class="user-profile">
+        <span class="user-name">{{ user?.name }}</span>
+        <div class="user-avatar">{{ getUserInitials() }}</div>
+      </div>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="filters-container">
+      <div class="filters-grid">
+        <!-- Row 1: Search filters -->
+        <div class="filter-row">
+          <mat-form-field appearance="outline" class="filter-field">
+            <mat-label>Search Type</mat-label>
+            <mat-select [(ngModel)]="filters.searchByAppId">
+              <mat-option value="">All</mat-option>
+              <mat-option value="appId">App ID</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="filter-field search-field">
+            <mat-label>Search App ID / Transaction</mat-label>
+            <input matInput [(ngModel)]="filters.searchByAppIdOrTransaction" placeholder="Enter App ID or Transaction ID" (keyup.enter)="applyFilters()">
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="filter-field">
+            <mat-label>Date</mat-label>
+            <input matInput [matDatepicker]="searchDatePicker" [(ngModel)]="searchDate" placeholder="Select date" (click)="searchDatePicker.open()" readonly>
+            <mat-datepicker-toggle matIconSuffix [for]="searchDatePicker"></mat-datepicker-toggle>
+            <mat-datepicker #searchDatePicker></mat-datepicker>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="filter-field">
+            <mat-label>Subscription Type</mat-label>
+            <mat-select [(ngModel)]="filters.subscriptionType">
+              <mat-option value="">All</mat-option>
+              <mat-option *ngFor="let type of subscriptionTypes" [value]="type.value">{{ type.label }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="filter-field">
+            <mat-label>Product</mat-label>
+            <mat-select [(ngModel)]="filters.productId">
+              <mat-option value="">All Products</mat-option>
+              <mat-option *ngFor="let product of products" [value]="product.name">{{ product.name }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="filter-field">
+            <mat-label>Period</mat-label>
+            <mat-select [(ngModel)]="filters.subscriptionPeriod">
+              <mat-option value="">All</mat-option>
+              <mat-option *ngFor="let period of subscriptionPeriods" [value]="period.value">{{ period.label }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <!-- Row 2: More filters -->
+        <div class="filter-row">
+          <mat-form-field appearance="outline" class="filter-field">
+            <mat-label>Add-ons</mat-label>
+            <mat-select [(ngModel)]="filters.addons">
+              <mat-option value="">All Add-ons</mat-option>
+              <mat-option *ngFor="let addon of addons" [value]="addon.name">{{ addon.name }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="filter-field">
+            <mat-label>Payment Mode</mat-label>
+            <mat-select [(ngModel)]="filters.paymentMode">
+              <mat-option value="">All Modes</mat-option>
+              <mat-option *ngFor="let mode of paymentModes" [value]="mode.value">{{ mode.label }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="filter-field">
+            <mat-label>Payment Source</mat-label>
+            <mat-select [(ngModel)]="filters.paymentSource">
+              <mat-option value="">All Sources</mat-option>
+              <mat-option *ngFor="let source of paymentSources" [value]="source.value">{{ source.label }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="filter-field">
+            <mat-label>Claimed User</mat-label>
+            <mat-select [(ngModel)]="filters.claimedUser">
+              <mat-option value="">All Users</mat-option>
+              <mat-option *ngFor="let claimed of claimedUsers" [value]="claimed.value">{{ claimed.label }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="filter-field">
+            <mat-label>Country</mat-label>
+            <mat-select [(ngModel)]="filters.language">
+              <mat-option value="">All Countries</mat-option>
+              <mat-option *ngFor="let lang of languages" [value]="lang.value">{{ lang.label }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <div class="filter-buttons">
+            <button mat-flat-button class="btn-search" (click)="applyFilters()">
+              <mat-icon>search</mat-icon>
+              Search
+            </button>
+            <button mat-flat-button class="btn-export" (click)="exportData()">
+              <mat-icon>download</mat-icon>
+              Export
+            </button>
+            <button mat-flat-button class="btn-reset" (click)="clearFilters()">
+              <mat-icon>refresh</mat-icon>
+              Reset
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Subscription History Summary -->
+    <div class="summary-container">
+      <div class="summary-header">Subscription History</div>
+      <div class="summary-content">
+        <div class="summary-row">
+          <div class="summary-col">
+            <span class="col-header">Trial</span>
+          </div>
+          <div class="summary-col">
+            <span class="col-header">Upgrade</span>
+          </div>
+          <div class="summary-col">
+            <span class="col-header">Renewal</span>
+          </div>
+          <div class="summary-col total-col">
+            <span class="col-header">(Trial+Upgrade) + Renewal = <span class="total-text">Total</span></span>
+          </div>
+        </div>
+        <div class="summary-row values">
+          <div class="summary-col">
+            <span class="col-value">{{ summary.trial.count }} (${{ summary.trial.amount | number:'1.2-2' }})</span>
+          </div>
+          <div class="summary-col">
+            <span class="col-value">{{ summary.upgrade.count }} (${{ summary.upgrade.amount | number:'1.2-2' }})</span>
+          </div>
+          <div class="summary-col">
+            <span class="col-value">{{ summary.renewal.count }} (${{ summary.renewal.amount | number:'1.2-2' }})</span>
+          </div>
+          <div class="summary-col total-col">
+            <span class="col-value">{{ summary.trial.count + summary.upgrade.count }} (${{ summary.trial.amount + summary.upgrade.amount | number:'1.2-2' }}) + {{ summary.renewal.count }} (${{ summary.renewal.amount | number:'1.2-2' }}) = {{ summary.total.count }} (<span class="total-amount">${{ summary.total.amount | number:'1.2-2' }}</span>)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment Logs Table -->
+    <div class="table-container">
+      <!-- Loading Spinner -->
+      <div *ngIf="loading" class="loading-container">
+        <mat-spinner diameter="50"></mat-spinner>
+        <p>Loading payment logs...</p>
+      </div>
+
+      <!-- Table -->
+      <div class="table-wrapper" *ngIf="!loading">
+        <table class="payment-table">
+          <thead>
+            <tr>
+              <th class="col-sno">S.No</th>
+              <th class="col-app">App Id/App<br>Name/Email</th>
+              <th class="col-message">Message</th>
+              <th class="col-period">Payment Period</th>
+              <th class="col-amount">Amount</th>
+              <th class="col-tax">Tax Amount</th>
+              <th class="col-invoice">Invoice ID</th>
+              <th class="col-transaction">Transaction ID</th>
+              <th class="col-mode">Payment Mode</th>
+              <th class="col-source">Payment Source</th>
+              <th class="col-device">Device<br>Selection</th>
+              <th class="col-refund">Refund<br>Status</th>
+              <th class="col-ip">Ip Address</th>
+              <th class="col-date">Last Payment Date</th>
+              <th class="col-claim">Claim<br>To</th>
+              <th class="col-info">Info</th>
+              <th class="col-download">Download<br>Invoice</th>
+              <th class="col-action">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let log of paymentLogs; let i = index">
+              <td class="col-sno">{{ getSerialNumber(i) }}</td>
+              <td class="col-app">
+                <div class="app-info">
+                  <a class="app-id" href="javascript:void(0)">{{ log.app_id || '-' }}</a>
+                  <span class="app-name">{{ log.app_name || '-' }}</span>
+                  <span class="app-email">{{ log.email || '-' }}</span>
+                </div>
+              </td>
+              <td class="col-message">
+                <span class="message-text" [matTooltip]="log.message">{{ log.message || '-' }}</span>
+              </td>
+              <td class="col-period">{{ log.payment_period || '-' }}</td>
+              <td class="col-amount">
+                <span class="amount-text">{{ log.currency || 'USD' }} {{ log.amount || '0' }}</span>
+              </td>
+              <td class="col-tax">{{ log.tax_amount || '0' }}</td>
+              <td class="col-invoice">{{ log.invoice_id || '-' }}</td>
+              <td class="col-transaction">
+                <span class="transaction-text">{{ log.transaction_id || '-' }}</span>
+              </td>
+              <td class="col-mode">
+                <span class="badge badge-mode" [ngClass]="getPaymentModeClass(log.payment_mode)">
+                  {{ log.payment_mode || '-' }}
+                </span>
+              </td>
+              <td class="col-source">{{ log.payment_source || '-' }}</td>
+              <td class="col-device">
+                <mat-icon *ngIf="log.device_selection === 'mobile'" class="device-icon mobile">smartphone</mat-icon>
+                <mat-icon *ngIf="log.device_selection !== 'mobile'" class="device-icon desktop">computer</mat-icon>
+              </td>
+              <td class="col-refund">
+                <span class="badge badge-refund" [ngClass]="getRefundStatusClass(log.refund_status)">
+                  {{ log.refund_status || 'No' }}
+                </span>
+              </td>
+              <td class="col-ip">
+                <span class="ip-text">{{ log.ip_address || '-' }}</span>
+              </td>
+              <td class="col-date">
+                <span class="date-text">{{ log.last_payment_date || '-' }}</span>
+              </td>
+              <td class="col-claim">
+                <button *ngIf="!log.claim_to" mat-icon-button class="claim-btn" matTooltip="Click Here to Claim" (click)="claimPayment(log)">
+                  <mat-icon>touch_app</mat-icon>
+                </button>
+                <span *ngIf="log.claim_to" class="claimed-text">{{ log.claim_to }}</span>
+              </td>
+              <td class="col-info">
+                <a href="javascript:void(0)" class="link-info" (click)="viewInfo(log)">Info</a>
+              </td>
+              <td class="col-download">
+                <span *ngIf="!log.has_invoice" class="no-invoice">--</span>
+                <a *ngIf="log.has_invoice" href="javascript:void(0)" class="link-invoice" (click)="downloadInvoice(log)">Invoice</a>
+              </td>
+              <td class="col-action">
+                <div class="action-wrapper" *ngIf="!log.has_signed_agreement">
+                  <mat-icon class="action-icon cancel">cancel</mat-icon>
+                  <span class="action-label">IP<br>Signed<br>Agreement</span>
+                </div>
+                <div class="action-wrapper signed" *ngIf="log.has_signed_agreement">
+                  <mat-icon class="action-icon check">check_circle</mat-icon>
+                  <span class="action-label">IP<br>Signed<br>Agreement</span>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Empty State -->
+      <div *ngIf="!loading && paymentLogs.length === 0" class="empty-state">
+        <mat-icon>receipt_long</mat-icon>
+        <h3>No Payment Logs Found</h3>
+        <p>Try adjusting your search filters or check back later.</p>
+      </div>
+
+      <!-- Pagination -->
+      <mat-paginator
+        *ngIf="!loading && paymentLogs.length > 0"
+        [length]="totalItems"
+        [pageSize]="itemsPerPage"
+        [pageIndex]="currentPage - 1"
+        [pageSizeOptions]="[5, 10, 25, 50]"
+        (page)="onPageChange($event)"
+        showFirstLastButtons>
+      </mat-paginator>
+    </div>
+  </div>
+</div>

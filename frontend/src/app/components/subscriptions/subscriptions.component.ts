@@ -364,6 +364,10 @@ export class SubscriptionsComponent implements OnInit {
     // Already on subscriptions page
   }
 
+  goToPaymentLogs(): void {
+    this.router.navigate(['/payment-logs']);
+  }
+
   onLogout(): void {
     this.authService.logout();
     this.router.navigate(['/login']);

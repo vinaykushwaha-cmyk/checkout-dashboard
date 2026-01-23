@@ -5,6 +5,7 @@ require('dotenv').config();
 const { testConnection } = require('./config/database');
 const authRoutes = require('./routes/auth');
 const subscriptionsRoutes = require('./routes/subscriptions');
+const paymentLogsRoutes = require('./routes/payment-logs');
 
 const app = express();
 
@@ -19,6 +20,7 @@ testConnection();
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/subscriptions', subscriptionsRoutes);
+app.use('/api/payment-logs', paymentLogsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
